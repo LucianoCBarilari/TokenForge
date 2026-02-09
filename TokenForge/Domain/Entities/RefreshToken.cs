@@ -24,3 +24,4 @@ namespace TokenForge.Domain.Entities
         public string? UserAgent { get; set; }
     }
 }
+

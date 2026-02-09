@@ -5,3 +5,4 @@ namespace TokenForge.Domain.Shared
         public static readonly Error None = new(string.Empty, string.Empty);
     }
 }
+

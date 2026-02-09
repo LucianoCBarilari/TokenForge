@@ -21,3 +21,4 @@ namespace TokenForge.Domain.Entities
         public ICollection<UserRole>? UserRoles { get; set; }
     }
 }
+

@@ -47,3 +47,4 @@ namespace TokenForge.Domain.Shared
         public static implicit operator Result<T>(Error error) => Failure(error);
     }
 }
+

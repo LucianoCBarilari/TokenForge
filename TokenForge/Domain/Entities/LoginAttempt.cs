@@ -18,3 +18,4 @@ namespace TokenForge.Domain.Entities
         public DateTime? LockedUntil { get; set; }
     }
 }
+
