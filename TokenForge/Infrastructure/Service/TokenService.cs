@@ -31,7 +31,7 @@ namespace TokenForge.Infrastructure.Service
         {
             try
             {
-                DateTime CurrentDate = _helper.GetBuenosAiresTime();
+                DateTime CurrentDate = _helper.GetServerTimeUtc();
                 var refreshToken = await _refreshTokenRepository.GetRefreshToken(RAToken, CurrentDate);
 
                 if (refreshToken == null)
@@ -51,14 +51,14 @@ namespace TokenForge.Infrastructure.Service
         {
             try
             {
-                DateTime CurrentDate = _helper.GetBuenosAiresTime();
+                DateTime CurrentDate = _helper.GetServerTimeUtc();
                 List<RefreshToken> rtList = await _refreshTokenRepository.GetAllByUserId(UserId, CurrentDate);
 
                 if (rtList.Any())
                 {
                     foreach (var refreshToken in rtList)
                     {
-                        refreshToken.RevokedAt = _helper.GetBuenosAiresTime();
+                        refreshToken.RevokedAt = _helper.GetServerTimeUtc();
                         refreshToken.ReplacedByToken = NewToken;
                         await _refreshTokenRepository.UpdateAsync(refreshToken);
                     }
@@ -83,7 +83,7 @@ namespace TokenForge.Infrastructure.Service
                 {
                     foreach (var token in userTokens)
                     {
-                        token.RevokedAt = _helper.GetBuenosAiresTime();
+                        token.RevokedAt = _helper.GetServerTimeUtc();
                     }
 
                     await _refreshTokenRepository.UpdateRangeAsync(userTokens);
@@ -115,8 +115,8 @@ namespace TokenForge.Infrastructure.Service
                 {
                     UserId = userId,
                     Token = newToken,
-                    CreatedAt = _helper.GetBuenosAiresTime(),
-                    ExpiresAt = _helper.GetBuenosAiresTime().AddDays(30)
+                    CreatedAt = _helper.GetServerTimeUtc(),
+                    ExpiresAt = _helper.GetServerTimeUtc().AddDays(30)
                 };
 
                 await _refreshTokenRepository.AddAsync(newRefreshToken);
@@ -134,7 +134,7 @@ namespace TokenForge.Infrastructure.Service
         {
             try
             {
-                var now = _helper.GetBuenosAiresTime();
+                var now = _helper.GetServerTimeUtc();
                 var tokens = await _refreshTokenRepository.GetRTByIdAndTokenToRevokeSession(userId, refreshToken);
                 
                 if (!tokens.Any())
