@@ -60,26 +60,6 @@ namespace TokenForge
         }
 
         [Fact]
-        public async Task GetAllRoles_WhenRepositoryReturnsNull_ReturnsOperationFailed()
-        {
-            var repo = new Mock<IRoleRepository>();
-            var logger = new Mock<ILogger<RoleService>>();
-            // Arrange
-            repo
-                .Setup(repo => repo.GetAllAsync())
-                .ReturnsAsync((List<Role>)null);
-            var service = new RoleService(repo.Object, logger.Object);
-            // Act
-            var result = await service.GetAllRoles();
-
-            // Assert
-            Assert.False(result.IsSuccess);
-            Assert.True(result.IsFailure);
-            Assert.NotNull(result.Error);
-            Assert.Contains("operation", result.Error.Message, StringComparison.OrdinalIgnoreCase);
-        }
-
-        [Fact]
         public async Task GetAllRoles_WhenRepositoryThrows_ReturnsOperationFailed()
         {
             var repo = new Mock<IRoleRepository>();

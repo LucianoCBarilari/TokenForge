@@ -15,6 +15,7 @@ using TokenForge.Infrastructure.Persistence.DataAccess;
 using TokenForge.Infrastructure.Persistence.Repositories;
 using TokenForge.Infrastructure.Service;
 using TokenForge.WebApi.Models;
+using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -181,7 +182,6 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseCors("CorsPolicy");
