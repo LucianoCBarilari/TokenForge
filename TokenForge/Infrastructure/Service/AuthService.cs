@@ -23,19 +23,11 @@ namespace TokenForge.Infrastructure.Service
         ILogger<AuthService> logger
         ) : IAuthService
     {
-        private readonly ILockoutService _lockoutService = lockoutService;
-        private readonly ITokenService _tokenService = tokenService;
-        private readonly IUserService _userService = userService;
-        private readonly IRoleService _roleService = roleService;
-        private readonly IUserRoleService _userRoleService = userRoleService;
-        private readonly IConfiguration _configuration = configuration;
-        private readonly ILogger<AuthService> _logger = logger;
-
         public async Task<Result<AuthResponse>> LoginAsync(User UserLogin)
         {
             try
             {
-                var lockCheckResult = await _lockoutService.LoginLockedChecker(UserLogin.UserAccount);
+                var lockCheckResult = await lockoutService.LoginLockedChecker(UserLogin.UserAccount);
                 if (lockCheckResult.IsFailure)
                 {
                     // Assuming the error from LockoutService is appropriate to return,
@@ -43,16 +35,16 @@ namespace TokenForge.Infrastructure.Service
                     return AuthErrors.UserLockedOut;
                 }
                 
-                var currentUserResult = await _userService.GetUserByAccount(UserLogin.UserAccount);
+                var currentUserResult = await userService.GetUserByAccount(UserLogin.UserAccount);
 
                 if (currentUserResult.IsFailure)
                 {
-                    await _lockoutService.RecordFailedLoginAttempt(UserLogin.UserAccount);
+                    await lockoutService.RecordFailedLoginAttempt(UserLogin.UserAccount);
                     return AuthErrors.InvalidCredentials;
                 }
                 var currentUser = currentUserResult.Value;
 
-                var rolePerUserResult = await _userRoleService.GetRolesByUserIdAsync(currentUser.UsersId);
+                var rolePerUserResult = await userRoleService.GetRolesByUserIdAsync(currentUser.UsersId);
 
                 if (rolePerUserResult.IsFailure)
                 {
@@ -66,7 +58,7 @@ namespace TokenForge.Infrastructure.Service
                     return AuthErrors.Unauthorized; // Or a more specific "UserHasNoRoles" error
                 }
 
-                var rolesResult = await _roleService.GetRolesForUserAsync(rolePerUser);
+                var rolesResult = await roleService.GetRolesForUserAsync(rolePerUser);
                 if (rolesResult.IsFailure)
                 {
                     // Propagate error from service
@@ -79,17 +71,17 @@ namespace TokenForge.Infrastructure.Service
 
                 if (pvr != PasswordVerificationResult.Success)
                 {
-                    await _lockoutService.RecordFailedLoginAttempt(UserLogin.UserAccount);
+                    await lockoutService.RecordFailedLoginAttempt(UserLogin.UserAccount);
                     return AuthErrors.InvalidCredentials;
                 }
 
-                var resetResult = await _lockoutService.ResetLoginAttempts(UserLogin.UserAccount);
+                var resetResult = await lockoutService.ResetLoginAttempts(UserLogin.UserAccount);
                 if (resetResult.IsFailure)
                 {
-                    _logger.LogWarning($"Failed to reset login attempts for user {UserLogin.UserAccount}: {resetResult.Error.Message}");
+                    logger.LogWarning("Failed to reset login attempts for user {UserLoginUserAccount}: {ErrorMessage}", UserLogin.UserAccount, resetResult.Error.Message);
                 }
 
-                Result<string> refreshTokenResult = await _tokenService.CreateTokenAsync(currentUser.UsersId);
+                Result<string> refreshTokenResult = await tokenService.CreateTokenAsync(currentUser.UsersId);
                 if(refreshTokenResult.IsFailure)
                 {
                     return refreshTokenResult.Error;
@@ -97,19 +89,19 @@ namespace TokenForge.Infrastructure.Service
 
                 var jwtToken = GenerateJwtToken(currentUser, roles);
 
-                _logger.LogInformation($"Successful login for user {UserLogin.UserAccount}");
+                logger.LogInformation("Successful login for user {UserLoginUserAccount}", UserLogin.UserAccount);
 
                 return AuthResponse.Success(jwtToken, refreshTokenResult.Value, 900);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error during login for user {UserLogin.UserAccount}");
+                logger.LogError(ex, "Error during login for user {UserLoginUserAccount}", UserLogin.UserAccount);
                 return AuthErrors.InternalServerError;
             }
         }
         public async Task<Result<string>> GenerateNewJwtToken(Guid UserId)
         {
-            var userWithRolesResult = await _userService.GetActiveUserWithRoles(UserId);
+            var userWithRolesResult = await userService.GetActiveUserWithRoles(UserId);
 
             if (userWithRolesResult.IsFailure)
             {
@@ -162,7 +154,7 @@ namespace TokenForge.Infrastructure.Service
                 claims.Add(new Claim(ClaimTypes.Role, "Empty Role"));
             }
 
-            var Key = Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"] ??
+            var Key = Encoding.UTF8.GetBytes(configuration["JwtSettings:SecretKey"] ??
                       throw new InvalidOperationException("SecretKey not found."));
 
             var TokenDescriptor = new SecurityTokenDescriptor
@@ -170,8 +162,8 @@ namespace TokenForge.Infrastructure.Service
                 Subject = new ClaimsIdentity(claims, "jwt"),
                 Expires = DateTime.UtcNow.AddMinutes(30),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(Key), SecurityAlgorithms.HmacSha256Signature),
-                Issuer = _configuration["JwtSettings:Issuer"],
-                Audience = _configuration["JwtSettings:Audience"]
+                Issuer = configuration["JwtSettings:Issuer"],
+                Audience = configuration["JwtSettings:Audience"]
             };
             var Token = TokenHandler.CreateToken(TokenDescriptor);
 
@@ -186,26 +178,26 @@ namespace TokenForge.Infrastructure.Service
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
 
-                ValidIssuer = _configuration["JwtSettings:Issuer"],
-                ValidAudience = _configuration["JwtSettings:Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtSettings:SecretKey"] ?? throw new InvalidOperationException("Secret Key not found")))
+                ValidIssuer = configuration["JwtSettings:Issuer"],
+                ValidAudience = configuration["JwtSettings:Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JwtSettings:SecretKey"] ?? throw new InvalidOperationException("Secret Key not found")))
             };
         }
         public async Task<Result> LogoutAsync(Guid UserId, string RToken)
         {
             try
             {
-                var result = await _tokenService.RevokeCurrentSession(UserId, RToken);
+                var result = await tokenService.RevokeCurrentSession(UserId, RToken);
                 if (result.IsFailure)
                 {
-                    return AuthErrors.LogoutFailed;
+                    return Result.Failure(AuthErrors.LogoutFailed);
                 }
                 return Result.Success();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error during logout for user {UserId}");
-                return AuthErrors.InternalServerError;
+                logger.LogError(ex, "Error during logout for user {UserId}", UserId);
+                return Result.Failure(AuthErrors.InternalServerError);
             }
         }
     }

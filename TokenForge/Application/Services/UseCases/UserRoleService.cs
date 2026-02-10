@@ -17,33 +17,30 @@ namespace TokenForge.Application.Services.UseCases
         ILogger<UserRoleService> logger
         ) : IUserRoleService
     {
-        private readonly IUserRoleRepository _userRoleRepository = userRoleRepository;
-        private readonly IUserRepository _userRepository = userRepository;
-        private readonly IRoleRepository _roleRepository = roleRepository; // Initialized IRoleRepository
-        private readonly ILogger<UserRoleService> _logger = logger;
+        // Initialized IRoleRepository
 
         public async Task<Result> AssignRoleToUserAsync(AssignRoleRequest assignRole)
         {
             try
             {
-                var currentUser = await _userRepository.GetByIdAsync(assignRole.UserId);
+                var currentUser = await userRepository.GetByIdAsync(assignRole.UserId);
                 if (currentUser == null)
                 {
-                    return UserRoleErrors.UserNotFound;
+                    return Result.Failure(UserRoleErrors.UserNotFound);
                 }
 
-                var role = await _roleRepository.GetByIdAsync(assignRole.RoleId);
+                var role = await roleRepository.GetByIdAsync(assignRole.RoleId);
                 if (role == null)
                 {
-                    return UserRoleErrors.RoleNotFound;
+                    return Result.Failure(UserRoleErrors.RoleNotFound);
                 }
 
-                var existingAssignment = await _userRoleRepository.FindByUserIdAndRoleIdAsync(assignRole.UserId, assignRole.RoleId);
+                var existingAssignment = await userRoleRepository.FindByUserIdAndRoleIdAsync(assignRole.UserId, assignRole.RoleId);
                 if (existingAssignment != null)
                 {
                     if (existingAssignment.IsActive)
                     {
-                        return UserRoleErrors.UserAlreadyInRole;
+                        return Result.Failure(UserRoleErrors.UserAlreadyInRole);
                     }
                     else
                     {
@@ -51,7 +48,7 @@ namespace TokenForge.Application.Services.UseCases
                         existingAssignment.IsActive = true;
                         existingAssignment.DeactivatedAt = null;
                         existingAssignment.DeactivatedReason = null;
-                        await _userRoleRepository.UpdateAsync(existingAssignment);
+                        await userRoleRepository.UpdateAsync(existingAssignment);
                     }
                 }
                 else
@@ -64,16 +61,16 @@ namespace TokenForge.Application.Services.UseCases
                         AssignedAt = DateTime.UtcNow,
                         IsActive = true
                     };
-                    await _userRoleRepository.AddAsync(userRole);
+                    await userRoleRepository.AddAsync(userRole);
                 }
 
-                await _userRoleRepository.SaveChangesAsync();
+                await userRoleRepository.SaveChangesAsync();
                 return Result.Success();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error assigning role {RoleId} to user {UserId}", assignRole.RoleId, assignRole.UserId);
-                return UserRoleErrors.OperationFailed;
+                logger.LogError(ex, "Error assigning role {RoleId} to user {UserId}", assignRole.RoleId, assignRole.UserId);
+                return Result.Failure(UserRoleErrors.OperationFailed);
             }
         }
 
@@ -86,13 +83,13 @@ namespace TokenForge.Application.Services.UseCases
         {
             try
             {
-                var userRole = await _userRoleRepository.GetByIdAsync(userRoleId);
+                var userRole = await userRoleRepository.GetByIdAsync(userRoleId);
                 if (userRole == null)
                 {
                     return UserRoleErrors.UserRoleNotFound;
                 }
 
-                var user = await _userRepository.GetByIdAsync(userRole.UserId);
+                var user = await userRepository.GetByIdAsync(userRole.UserId);
 
                 var userRoleDto = new UserRoleResponse
                 {
@@ -111,7 +108,7 @@ namespace TokenForge.Application.Services.UseCases
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting user role by ID {UserRoleId}", userRoleId);
+                logger.LogError(ex, "Error getting user role by ID {UserRoleId}", userRoleId);
                 return UserRoleErrors.OperationFailed;
             }
         }
@@ -120,25 +117,25 @@ namespace TokenForge.Application.Services.UseCases
         {
             try
             {
-                var userRole = await _userRoleRepository.FindByUserIdAndRoleIdAsync(RoleToRevoke.UserId, RoleToRevoke.RoleId);
+                var userRole = await userRoleRepository.FindByUserIdAndRoleIdAsync(RoleToRevoke.UserId, RoleToRevoke.RoleId);
 
                 if (userRole == null || !userRole.IsActive)
                 {
-                    return UserRoleErrors.ActiveAssignmentNotFound;
+                    return Result.Failure(UserRoleErrors.ActiveAssignmentNotFound);
                 }
 
                 userRole.IsActive = false;
                 userRole.DeactivatedAt = DateTime.UtcNow;
                 userRole.DeactivatedReason = RoleToRevoke.Reason;
 
-                await _userRoleRepository.UpdateAsync(userRole);
-                await _userRoleRepository.SaveChangesAsync();
+                await userRoleRepository.UpdateAsync(userRole);
+                await userRoleRepository.SaveChangesAsync();
                 return Result.Success();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error revoking role {RoleId} from user {UserId}", RoleToRevoke.RoleId, RoleToRevoke.UserId);
-                return UserRoleErrors.OperationFailed;
+                logger.LogError(ex, "Error revoking role {RoleId} from user {UserId}", RoleToRevoke.RoleId, RoleToRevoke.UserId);
+                return Result.Failure(UserRoleErrors.OperationFailed);
             }
         }
 
@@ -146,7 +143,7 @@ namespace TokenForge.Application.Services.UseCases
         {
             try
             {
-                var userRoles = await _userRoleRepository.GetRolesByUserIdAsync(userId) ?? new List<UserRole>();
+                var userRoles = await userRoleRepository.GetRolesByUserIdAsync(userId) ?? new List<UserRole>();
 
                 // This mapping is likely incomplete as it doesn't fetch User/Role names.
                 // For now, it correctly maps the available data.
@@ -165,7 +162,7 @@ namespace TokenForge.Application.Services.UseCases
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting roles for user {UserId}", userId);
+                logger.LogError(ex, "Error getting roles for user {UserId}", userId);
                 return UserRoleErrors.OperationFailed;
             }
         }
@@ -174,13 +171,13 @@ namespace TokenForge.Application.Services.UseCases
         {
             try
             {
-                var role = await _roleRepository.GetByIdAsync(roleId);
+                var role = await roleRepository.GetByIdAsync(roleId);
                 if (role == null)
                 {
                     return UserRoleErrors.RoleNotFound;
                 }
 
-                var users = await _userRoleRepository.GetUsersByRoleIdAsync(roleId) ?? new List<User>();
+                var users = await userRoleRepository.GetUsersByRoleIdAsync(roleId) ?? new List<User>();
 
                 // It's not an error if no users are found, just return an empty list.
                 var userDtos = users.Select(u => new UserResponse
@@ -194,7 +191,7 @@ namespace TokenForge.Application.Services.UseCases
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting users for role {RoleId}", roleId);
+                logger.LogError(ex, "Error getting users for role {RoleId}", roleId);
                 return UserRoleErrors.OperationFailed;
             }
         }
