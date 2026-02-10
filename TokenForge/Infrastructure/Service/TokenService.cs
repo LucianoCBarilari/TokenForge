@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using TokenForge.Application.Dtos.RefreshTokenDto;
 using TokenForge.Application.Interfaces;
 using TokenForge.Domain.Entities;
@@ -15,11 +14,7 @@ namespace TokenForge.Infrastructure.Service
         ILogger<TokenService> logger
         ) : ITokenService
     {
-        private readonly IHelpers _helper = helper;
-        private readonly IRefreshTokenRepository _refreshTokenRepository = refreshTokenRepository;
-        private readonly ILogger<TokenService> _logger = logger;
-
-        private string GenerateRefreshToken()
+        private static string GenerateRefreshToken()
         {
             var randomNumber = new byte[64];
             using var rng = RandomNumberGenerator.Create();
@@ -31,19 +26,19 @@ namespace TokenForge.Infrastructure.Service
         {
             try
             {
-                DateTime CurrentDate = _helper.GetBuenosAiresTime();
-                var refreshToken = await _refreshTokenRepository.GetRefreshToken(RAToken, CurrentDate);
+                DateTime CurrentDate = helper.GetBuenosAiresTime();
+                var refreshToken = await refreshTokenRepository.GetRefreshToken(RAToken, CurrentDate);
 
                 if (refreshToken == null)
                 {
-                    return AuthErrors.InvalidRefreshToken;
+                    return Result.Failure(AuthErrors.InvalidRefreshToken);
                 }
                 return Result.Success();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error validating refresh token for user {UserId}", RAToken.UserId);
-                return new Error("Token.ValidationFailed", "An error occurred while validating the refresh token.");
+                logger.LogError(ex, "Error validating refresh token for user {UserId}", RAToken.UserId);
+                return  Result.Failure(new Error("Token.ValidationFailed", "An error occurred while validating the refresh token."));
             }
         }
 
@@ -51,25 +46,25 @@ namespace TokenForge.Infrastructure.Service
         {
             try
             {
-                DateTime CurrentDate = _helper.GetBuenosAiresTime();
-                List<RefreshToken> rtList = await _refreshTokenRepository.GetAllByUserId(UserId, CurrentDate);
+                DateTime CurrentDate = helper.GetBuenosAiresTime();
+                List<RefreshToken> rtList = await refreshTokenRepository.GetAllByUserId(UserId, CurrentDate);
 
                 if (rtList.Any())
                 {
                     foreach (var refreshToken in rtList)
                     {
-                        refreshToken.RevokedAt = _helper.GetBuenosAiresTime();
+                        refreshToken.RevokedAt = helper.GetBuenosAiresTime();
                         refreshToken.ReplacedByToken = NewToken;
-                        await _refreshTokenRepository.UpdateAsync(refreshToken);
+                        await refreshTokenRepository.UpdateAsync(refreshToken);
                     }
-                    await _refreshTokenRepository.SaveChangesAsync();
+                    await refreshTokenRepository.SaveChangesAsync();
                 }
                 return Result.Success();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error revoking refresh tokens for user {UserId}", UserId);
-                return new Error("Token.RevokeFailed", "An error occurred while revoking refresh tokens.");
+                logger.LogError(ex, "Error revoking refresh tokens for user {UserId}", UserId);
+                return Result.Failure(new Error("Token.RevokeFailed", "An error occurred while revoking refresh tokens."));
             }
         }
 
@@ -77,25 +72,25 @@ namespace TokenForge.Infrastructure.Service
         {
             try
             {
-                List<RefreshToken> userTokens = await _refreshTokenRepository.GetRTByIdAndRevokeStatus(userId);
+                List<RefreshToken> userTokens = await refreshTokenRepository.GetRTByIdAndRevokeStatus(userId);
 
                 if (userTokens.Any())
                 {
                     foreach (var token in userTokens)
                     {
-                        token.RevokedAt = _helper.GetBuenosAiresTime();
+                        token.RevokedAt = helper.GetBuenosAiresTime();
                     }
 
-                    await _refreshTokenRepository.UpdateRangeAsync(userTokens);
-                    await _refreshTokenRepository.SaveChangesAsync();
+                    await refreshTokenRepository.UpdateRangeAsync(userTokens);
+                    await refreshTokenRepository.SaveChangesAsync();
                 }
                 
                 return Result.Success();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error revoking all user tokens for user {UserId}", userId);
-                return new Error("Token.RevokeAllFailed", "An error occurred while revoking all user tokens.");
+                logger.LogError(ex, "Error revoking all user tokens for user {UserId}", userId);
+                return Result.Failure(new Error("Token.RevokeAllFailed", "An error occurred while revoking all user tokens."));
             }
         }
 
@@ -115,17 +110,17 @@ namespace TokenForge.Infrastructure.Service
                 {
                     UserId = userId,
                     Token = newToken,
-                    CreatedAt = _helper.GetBuenosAiresTime(),
-                    ExpiresAt = _helper.GetBuenosAiresTime().AddDays(30)
+                    CreatedAt = helper.GetBuenosAiresTime(),
+                    ExpiresAt = helper.GetBuenosAiresTime().AddDays(30)
                 };
 
-                await _refreshTokenRepository.AddAsync(newRefreshToken);
-                await _refreshTokenRepository.SaveChangesAsync();
+                await refreshTokenRepository.AddAsync(newRefreshToken);
+                await refreshTokenRepository.SaveChangesAsync();
                 return newToken;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error creating new token for user {UserId}", userId);
+                logger.LogError(ex, "Error creating new token for user {UserId}", userId);
                 return new Error("Token.CreationFailed", "An error occurred while creating a new token.");
             }
         }
@@ -134,12 +129,12 @@ namespace TokenForge.Infrastructure.Service
         {
             try
             {
-                var now = _helper.GetBuenosAiresTime();
-                var tokens = await _refreshTokenRepository.GetRTByIdAndTokenToRevokeSession(userId, refreshToken);
+                var now = helper.GetBuenosAiresTime();
+                var tokens = await refreshTokenRepository.GetRTByIdAndTokenToRevokeSession(userId, refreshToken);
                 
                 if (!tokens.Any())
                 {
-                    return AuthErrors.InvalidRefreshToken;
+                    return Result.Failure(AuthErrors.InvalidRefreshToken);
                 }
 
                 foreach (var token in tokens)
@@ -147,15 +142,15 @@ namespace TokenForge.Infrastructure.Service
                     token.RevokedAt = now;
                     token.ReplacedByToken = string.Empty;
                 }
-                await _refreshTokenRepository.UpdateRangeAsync(tokens);
-                int result = await _refreshTokenRepository.SaveChangesAsync();
+                await refreshTokenRepository.UpdateRangeAsync(tokens);
+                int result = await refreshTokenRepository.SaveChangesAsync();
 
-                return result > 0 ? Result.Success() : new Error("Token.RevokeSessionFailed", "Failed to save changes while revoking session.");
+                return result > 0 ? Result.Success() : Result.Failure(new Error("Token.RevokeSessionFailed", "Failed to save changes while revoking session."));
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error revoking current session for user {UserId}", userId);
-                return new Error("Token.RevokeSessionFailed", "An error occurred while revoking the current session.");
+                logger.LogError(ex, "Error revoking current session for user {UserId}", userId);
+                return Result.Failure(new Error("Token.RevokeSessionFailed", "An error occurred while revoking the current session."));
             }
         }
     }
