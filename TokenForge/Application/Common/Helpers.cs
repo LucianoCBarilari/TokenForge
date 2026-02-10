@@ -1,22 +1,17 @@
 using TokenForge.Domain.Interfaces;
 using System;
 using System.Text.RegularExpressions;
-using TimeZoneConverter;
 
 namespace TokenForge.Application.Common
 {
     public class Helpers : IHelpers
     {
         /// <summary>
-        /// Gets the current date and time in the Buenos Aires time zone.
+        /// Gets the current UTC time from the server.
         /// </summary>
-        public virtual DateTime GetBuenosAiresTime()
+        public virtual DateTime GetServerTimeUtc()
         {
-            var timeZone = TZConvert.GetTimeZoneInfo("America/Argentina/Buenos_Aires");
-
-            DateTime buenosAiresTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timeZone);
-
-            return buenosAiresTime;
+            return DateTime.UtcNow;
         }
 
         /// <summary>

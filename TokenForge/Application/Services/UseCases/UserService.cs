@@ -61,7 +61,7 @@ namespace TokenForge.Application.Services.UseCases
                         Email = NewUser.Email,
                         UserAccount = NewUser.UserAccount,
                         IsActive = true,
-                        CreatedAt = _helper.GetBuenosAiresTime(),
+                        CreatedAt = _helper.GetServerTimeUtc(),
                         PasswordHash = passwordHasher.HashPassword(new User(), NewUser.Pass.Trim()) // Pass empty User object to hasher
                     };
 
@@ -74,7 +74,7 @@ namespace TokenForge.Application.Services.UseCases
                     {
                         UserId = CurrentUser.UsersId,
                         RoleId = NewUser.RoleId,
-                        AssignedAt = _helper.GetBuenosAiresTime(),
+                        AssignedAt = _helper.GetServerTimeUtc(),
                         IsActive = true
                     };
 
@@ -119,7 +119,7 @@ namespace TokenForge.Application.Services.UseCases
                     return Result.Failure(UserErrors.UserNotFound);
 
                 user.Email = newEmail;
-                user.UpdatedAt = _helper.GetBuenosAiresTime();
+                user.UpdatedAt = _helper.GetServerTimeUtc();
 
                 await _userRepository.UpdateAsync(user);
                 await _userRepository.SaveChangesAsync(); // Use specific repository's SaveChangesAsync
@@ -152,7 +152,7 @@ namespace TokenForge.Application.Services.UseCases
                     return Result.Failure(UserErrors.AccountAlreadyInUse);
 
                 user.UserAccount = NewAccount;
-                user.UpdatedAt = _helper.GetBuenosAiresTime();
+                user.UpdatedAt = _helper.GetServerTimeUtc();
 
                 await _userRepository.UpdateAsync(user);
                 await _userRepository.SaveChangesAsync(); // Use specific repository's SaveChangesAsync
@@ -195,7 +195,7 @@ namespace TokenForge.Application.Services.UseCases
                     return Result.Failure(UserErrors.OldPasswordIncorrect);
 
                 user.PasswordHash = PH.HashPassword(user, NewPasswordObj.NewPassword.Trim());
-                user.UpdatedAt = _helper.GetBuenosAiresTime();
+                user.UpdatedAt = _helper.GetServerTimeUtc();
 
                 await _userRepository.UpdateAsync(user);
                 await _userRepository.SaveChangesAsync(); // Use specific repository's SaveChangesAsync
@@ -217,7 +217,7 @@ namespace TokenForge.Application.Services.UseCases
                     return Result.Failure(UserErrors.UserNotFound);
 
                 user.IsActive = false;
-                user.UpdatedAt = _helper.GetBuenosAiresTime();
+                user.UpdatedAt = _helper.GetServerTimeUtc();
 
                 await using var transaction = await _unitOfWork.BeginTransactionAsync();
                 try

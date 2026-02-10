@@ -23,7 +23,7 @@ namespace TokenForge.Infrastructure.Service
         {
             try
             {
-                DateTime CurrentDate = _helper.GetBuenosAiresTime();
+                DateTime CurrentDate = _helper.GetServerTimeUtc();
                 var user = await _userRepository.GetByAccountAsync(UAccount);
                 LoginAttempt? loginAttempt = await _loginAttemptRepository.GetInfoByUserAccount(UAccount);
                 
@@ -63,7 +63,7 @@ namespace TokenForge.Infrastructure.Service
         {
             try
             {
-                DateTime currentDate = _helper.GetBuenosAiresTime();
+                DateTime currentDate = _helper.GetServerTimeUtc();
                 var user = await _userRepository.GetByAccountAsync(userAccount);
                 var loginAttempt = await _loginAttemptRepository.GetInfoByUserAccount(userAccount);
 
@@ -111,7 +111,7 @@ namespace TokenForge.Infrastructure.Service
                     return new LoginAttemptResponse { Succeeded = true };
                 }
 
-                DateTime currentDate = _helper.GetBuenosAiresTime();
+                DateTime currentDate = _helper.GetServerTimeUtc();
                 var loginAttempt = await _loginAttemptRepository.GetInfoByUserAccount(userAccount);
 
                 if (loginAttempt == null)
