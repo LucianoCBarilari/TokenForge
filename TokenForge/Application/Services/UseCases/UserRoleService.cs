@@ -29,13 +29,13 @@ namespace TokenForge.Application.Services.UseCases
                 var currentUser = await _userRepository.GetByIdAsync(assignRole.UserId);
                 if (currentUser == null)
                 {
-                    return UserRoleErrors.UserNotFound;
+                    return Result.Failure(UserRoleErrors.UserNotFound);
                 }
 
                 var role = await _roleRepository.GetByIdAsync(assignRole.RoleId);
                 if (role == null)
                 {
-                    return UserRoleErrors.RoleNotFound;
+                    return Result.Failure(UserRoleErrors.RoleNotFound);
                 }
 
                 var existingAssignment = await _userRoleRepository.FindByUserIdAndRoleIdAsync(assignRole.UserId, assignRole.RoleId);
@@ -43,7 +43,7 @@ namespace TokenForge.Application.Services.UseCases
                 {
                     if (existingAssignment.IsActive)
                     {
-                        return UserRoleErrors.UserAlreadyInRole;
+                        return Result.Failure(UserRoleErrors.UserAlreadyInRole);
                     }
                     else
                     {
@@ -73,7 +73,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error assigning role {RoleId} to user {UserId}", assignRole.RoleId, assignRole.UserId);
-                return UserRoleErrors.OperationFailed;
+                return Result.Failure(UserRoleErrors.OperationFailed);
             }
         }
 
@@ -89,7 +89,7 @@ namespace TokenForge.Application.Services.UseCases
                 var userRole = await _userRoleRepository.GetByIdAsync(userRoleId);
                 if (userRole == null)
                 {
-                    return UserRoleErrors.UserRoleNotFound;
+                    return Result<UserRoleResponse>.Failure(UserRoleErrors.UserRoleNotFound);
                 }
 
                 var user = await _userRepository.GetByIdAsync(userRole.UserId);
@@ -112,7 +112,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting user role by ID {UserRoleId}", userRoleId);
-                return UserRoleErrors.OperationFailed;
+                return Result<UserRoleResponse>.Failure(UserRoleErrors.OperationFailed);
             }
         }
 
@@ -124,7 +124,7 @@ namespace TokenForge.Application.Services.UseCases
 
                 if (userRole == null || !userRole.IsActive)
                 {
-                    return UserRoleErrors.ActiveAssignmentNotFound;
+                    return Result.Failure(UserRoleErrors.ActiveAssignmentNotFound);
                 }
 
                 userRole.IsActive = false;
@@ -138,7 +138,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error revoking role {RoleId} from user {UserId}", RoleToRevoke.RoleId, RoleToRevoke.UserId);
-                return UserRoleErrors.OperationFailed;
+                return Result.Failure(UserRoleErrors.OperationFailed);
             }
         }
 
@@ -166,7 +166,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting roles for user {UserId}", userId);
-                return UserRoleErrors.OperationFailed;
+                return Result<List<UserRoleResponse>>.Failure(UserRoleErrors.OperationFailed);
             }
         }
 
@@ -177,7 +177,7 @@ namespace TokenForge.Application.Services.UseCases
                 var role = await _roleRepository.GetByIdAsync(roleId);
                 if (role == null)
                 {
-                    return UserRoleErrors.RoleNotFound;
+                    return Result<List<UserResponse>>.Failure(UserRoleErrors.RoleNotFound);
                 }
 
                 var users = await _userRoleRepository.GetUsersByRoleIdAsync(roleId) ?? new List<User>();
@@ -195,7 +195,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error getting users for role {RoleId}", roleId);
-                return UserRoleErrors.OperationFailed;
+                return Result<List<UserResponse>>.Failure(UserRoleErrors.OperationFailed);
             }
         }
     }

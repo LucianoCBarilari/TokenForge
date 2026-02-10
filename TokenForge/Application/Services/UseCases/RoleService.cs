@@ -35,7 +35,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while getting all roles.");
-                return RoleErrors.OperationFailed;
+                return Result<List<RoleResponse>>.Failure(RoleErrors.OperationFailed);
             }
         }
 
@@ -46,7 +46,7 @@ namespace TokenForge.Application.Services.UseCases
                 var role = await _roleRepository.GetByIdAsync(roleId);
                 if (role == null)
                 {
-                    return RoleErrors.RoleNotFound;
+                    return Result<RoleResponse>.Failure(RoleErrors.RoleNotFound);
                 }
                
                 var mapped = new RoleResponse
@@ -62,7 +62,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while getting role by ID {RoleId}.", roleId);
-                return RoleErrors.OperationFailed;
+                return Result<RoleResponse>.Failure(RoleErrors.OperationFailed);
             }
         }
 
@@ -74,7 +74,7 @@ namespace TokenForge.Application.Services.UseCases
 
                 if (role == null) // Check for null role before accessing properties
                 {
-                    return RoleErrors.RoleNotFound;
+                    return Result.Failure(RoleErrors.RoleNotFound);
                 }
 
                 role.RoleName = updatedRole.RoleName ?? role.RoleName;
@@ -88,7 +88,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while updating role {RoleId}.", updatedRole.RolesId);
-                return RoleErrors.OperationFailed;
+                return Result.Failure(RoleErrors.OperationFailed);
             }
         }
 
@@ -122,7 +122,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while getting roles for user.");
-                return RoleErrors.OperationFailed;
+                return Result<List<RoleResponse>>.Failure(RoleErrors.OperationFailed);
             }
         }
     }

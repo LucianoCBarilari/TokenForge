@@ -198,14 +198,14 @@ namespace TokenForge.Infrastructure.Service
                 var result = await _tokenService.RevokeCurrentSession(UserId, RToken);
                 if (result.IsFailure)
                 {
-                    return AuthErrors.LogoutFailed;
+                    return Result.Failure(AuthErrors.LogoutFailed);
                 }
                 return Result.Success();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error during logout for user {UserId}");
-                return AuthErrors.InternalServerError;
+                return Result.Failure(AuthErrors.InternalServerError);
             }
         }
     }

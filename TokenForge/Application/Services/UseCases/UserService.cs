@@ -35,20 +35,20 @@ namespace TokenForge.Application.Services.UseCases
 
                 // Validaciones
                 if (!_helper.EmailValidator(NewUser.Email))
-                    return new Error("User.InvalidEmailFormat", "Invalid email format.");
+                    return Result.Failure(new Error("User.InvalidEmailFormat", "Invalid email format."));
 
                 if (!_helper.AccountValidator(NewUser.UserAccount))
-                    return new Error("User.InvalidAccountFormat", "Invalid user account format. Must be 3-20 characters long and can only contain letters, numbers, and underscores.");
+                    return Result.Failure(new Error("User.InvalidAccountFormat", "Invalid user account format. Must be 3-20 characters long and can only contain letters, numbers, and underscores."));
 
                 if (await _userRepository.GetRegisteredEmail(NewUser.Email))
-                    return UserErrors.EmailAlreadyInUse;
+                    return Result.Failure(UserErrors.EmailAlreadyInUse);
 
                 if (await _userRepository.GetRegisteredUserAccount(NewUser.UserAccount))
-                    return UserErrors.AccountAlreadyInUse;
+                    return Result.Failure(UserErrors.AccountAlreadyInUse);
 
                 var roleExist = await _roleRepository.GetByIdAsync(NewUser.RoleId);
                 if (roleExist == null)
-                    return RoleErrors.RoleNotFound; // Assuming RoleErrors is still used for role validation
+                    return Result.Failure(RoleErrors.RoleNotFound); // Assuming RoleErrors is still used for role validation
 
                 // TRANSACTION
                 await using var transaction = await _unitOfWork.BeginTransactionAsync();
@@ -89,13 +89,13 @@ namespace TokenForge.Application.Services.UseCases
                 {
                     await transaction.RollbackAsync();
                     _logger.LogError(transEx, "Transaction failed during user registration for account {UserAccount}", NewUser.UserAccount);
-                    return UserErrors.OperationFailed;
+                    return Result.Failure(UserErrors.OperationFailed);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error registering user {UserAccount}", NewUser.UserAccount);
-                return UserErrors.OperationFailed;
+                return Result.Failure(UserErrors.OperationFailed);
             }
         }
 
@@ -106,17 +106,17 @@ namespace TokenForge.Application.Services.UseCases
                 var newEmail = NewMailObj.NewEmail.ToLower().Trim();
 
                 if (NewMailObj.UserId == Guid.Empty)
-                    return new Error("User.UserIdRequired", "User ID is required.");
+                    return Result.Failure(new Error("User.UserIdRequired", "User ID is required."));
 
                 if (string.IsNullOrWhiteSpace(newEmail) || !_helper.EmailValidator(newEmail))
-                    return new Error("User.InvalidEmailFormat", "Invalid email format.");
+                    return Result.Failure(new Error("User.InvalidEmailFormat", "Invalid email format."));
 
                 if (await _userRepository.GetRegisteredEmail(newEmail))
-                    return UserErrors.EmailAlreadyInUse;
+                    return Result.Failure(UserErrors.EmailAlreadyInUse);
 
                 var user = await _userRepository.GetByIdAsync(NewMailObj.UserId);
                 if (user == null)
-                    return UserErrors.UserNotFound;
+                    return Result.Failure(UserErrors.UserNotFound);
 
                 user.Email = newEmail;
                 user.UpdatedAt = _helper.GetBuenosAiresTime();
@@ -128,7 +128,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating email for user {UserId}", NewMailObj.UserId);
-                return UserErrors.OperationFailed;
+                return Result.Failure(UserErrors.OperationFailed);
             }
         }
 
@@ -139,17 +139,17 @@ namespace TokenForge.Application.Services.UseCases
                 var NewAccount = UpdatedAccount.NewAccount.ToLower().Trim();
 
                 if (UpdatedAccount.UserId == Guid.Empty)
-                    return new Error("User.UserIdRequired", "User ID is required.");
+                    return Result.Failure(new Error("User.UserIdRequired", "User ID is required."));
 
                 if (string.IsNullOrWhiteSpace(NewAccount) || !_helper.AccountValidator(NewAccount))
-                    return new Error("User.InvalidAccountFormat", "Invalid user account format.");
+                    return Result.Failure(new Error("User.InvalidAccountFormat", "Invalid user account format."));
 
                 var user = await _userRepository.GetByIdAsync(UpdatedAccount.UserId);
                 if (user == null)
-                    return UserErrors.UserNotFound;
+                    return Result.Failure(UserErrors.UserNotFound);
 
                 if (await _userRepository.GetRegisteredUserAccount(NewAccount))
-                    return UserErrors.AccountAlreadyInUse;
+                    return Result.Failure(UserErrors.AccountAlreadyInUse);
 
                 user.UserAccount = NewAccount;
                 user.UpdatedAt = _helper.GetBuenosAiresTime();
@@ -161,7 +161,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating account for user {UserId}", UpdatedAccount.UserId);
-                return UserErrors.OperationFailed;
+                return Result.Failure(UserErrors.OperationFailed);
             }
         }
 
@@ -170,29 +170,29 @@ namespace TokenForge.Application.Services.UseCases
             try
             {
                 if (NewPasswordObj.UserId == Guid.Empty)
-                    return new Error("User.UserIdRequired", "User ID is required.");
+                    return Result.Failure(new Error("User.UserIdRequired", "User ID is required."));
 
                 if (string.IsNullOrWhiteSpace(NewPasswordObj.OldPassword))
-                    return new Error("User.OldPasswordRequired", "Old password is required.");
+                    return Result.Failure(new Error("User.OldPasswordRequired", "Old password is required."));
 
                 bool FlagTwo = _helper.PassValidator(NewPasswordObj.NewPassword.Trim());
                 bool FlagThree = _helper.PassValidator(NewPasswordObj.ConfirmNewPassword.Trim());
 
                 if (!FlagTwo || !FlagThree)
-                    return UserErrors.InvalidPassword;
+                    return Result.Failure(UserErrors.InvalidPassword);
 
                 if (NewPasswordObj.NewPassword.Trim() != NewPasswordObj.ConfirmNewPassword.Trim())
-                    return UserErrors.PasswordMismatch;
+                    return Result.Failure(UserErrors.PasswordMismatch);
 
                 var user = await _userRepository.GetByIdAsync(NewPasswordObj.UserId);
                 if (user == null)
-                    return UserErrors.UserNotFound;
+                    return Result.Failure(UserErrors.UserNotFound);
 
                 PasswordHasher<User> PH = new();
                 var VR = PH.VerifyHashedPassword(user, user.PasswordHash, NewPasswordObj.OldPassword.Trim());
 
                 if (VR != PasswordVerificationResult.Success)
-                    return UserErrors.OldPasswordIncorrect;
+                    return Result.Failure(UserErrors.OldPasswordIncorrect);
 
                 user.PasswordHash = PH.HashPassword(user, NewPasswordObj.NewPassword.Trim());
                 user.UpdatedAt = _helper.GetBuenosAiresTime();
@@ -204,7 +204,7 @@ namespace TokenForge.Application.Services.UseCases
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating password for user {UserId}", NewPasswordObj.UserId);
-                return UserErrors.OperationFailed;
+                return Result.Failure(UserErrors.OperationFailed);
             }
         }
 
@@ -214,7 +214,7 @@ namespace TokenForge.Application.Services.UseCases
             {
                 var user = await _userRepository.GetByIdAsync(UserToDisable.UserToDisable);
                 if (user == null)
-                    return UserErrors.UserNotFound;
+                    return Result.Failure(UserErrors.UserNotFound);
 
                 user.IsActive = false;
                 user.UpdatedAt = _helper.GetBuenosAiresTime();
@@ -240,13 +240,13 @@ namespace TokenForge.Application.Services.UseCases
                 {
                     await transaction.RollbackAsync();
                     _logger.LogError(transEx, "Transaction failed during user disable for user {UserId}", UserToDisable.UserToDisable);
-                    return UserErrors.OperationFailed;
+                    return Result.Failure(UserErrors.OperationFailed);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error disabling user {UserId}", UserToDisable.UserToDisable);
-                return UserErrors.OperationFailed;
+                return Result.Failure(UserErrors.OperationFailed);
             }
         }
 

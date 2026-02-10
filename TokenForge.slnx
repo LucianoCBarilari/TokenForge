@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="TokenForge.Tests/TokenForge.Tests.csproj" />
   <Project Path="TokenForge/TokenForge.csproj" />
 </Solution>

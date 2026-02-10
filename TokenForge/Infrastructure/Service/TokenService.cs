@@ -36,14 +36,14 @@ namespace TokenForge.Infrastructure.Service
 
                 if (refreshToken == null)
                 {
-                    return AuthErrors.InvalidRefreshToken;
+                    return Result.Failure(AuthErrors.InvalidRefreshToken);
                 }
                 return Result.Success();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error validating refresh token for user {UserId}", RAToken.UserId);
-                return new Error("Token.ValidationFailed", "An error occurred while validating the refresh token.");
+                return Result.Failure(new Error("Token.ValidationFailed", "An error occurred while validating the refresh token."));
             }
         }
 
@@ -69,7 +69,7 @@ namespace TokenForge.Infrastructure.Service
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error revoking refresh tokens for user {UserId}", UserId);
-                return new Error("Token.RevokeFailed", "An error occurred while revoking refresh tokens.");
+                return Result.Failure(new Error("Token.RevokeFailed", "An error occurred while revoking refresh tokens."));
             }
         }
 
@@ -95,7 +95,7 @@ namespace TokenForge.Infrastructure.Service
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error revoking all user tokens for user {UserId}", userId);
-                return new Error("Token.RevokeAllFailed", "An error occurred while revoking all user tokens.");
+                return Result.Failure(new Error("Token.RevokeAllFailed", "An error occurred while revoking all user tokens."));
             }
         }
 
@@ -139,7 +139,7 @@ namespace TokenForge.Infrastructure.Service
                 
                 if (!tokens.Any())
                 {
-                    return AuthErrors.InvalidRefreshToken;
+                    return Result.Failure(AuthErrors.InvalidRefreshToken);
                 }
 
                 foreach (var token in tokens)
@@ -150,12 +150,14 @@ namespace TokenForge.Infrastructure.Service
                 await _refreshTokenRepository.UpdateRangeAsync(tokens);
                 int result = await _refreshTokenRepository.SaveChangesAsync();
 
-                return result > 0 ? Result.Success() : new Error("Token.RevokeSessionFailed", "Failed to save changes while revoking session.");
+                return result > 0
+                    ? Result.Success()
+                    : Result.Failure(new Error("Token.RevokeSessionFailed", "Failed to save changes while revoking session."));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error revoking current session for user {UserId}", userId);
-                return new Error("Token.RevokeSessionFailed", "An error occurred while revoking the current session.");
+                return Result.Failure(new Error("Token.RevokeSessionFailed", "An error occurred while revoking the current session."));
             }
         }
     }
