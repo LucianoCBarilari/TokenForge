@@ -25,7 +25,6 @@ var connectionString = builder.Configuration.GetConnectionString("JWT_Security")
 builder.Services.AddDbContext<TokenForgeContext>(options => options.UseSqlServer(connectionString));
 
 builder.Services.AddScoped<IHelpers, Helpers>();
-builder.Services.AddScoped<IGenericRepository, GenericRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();

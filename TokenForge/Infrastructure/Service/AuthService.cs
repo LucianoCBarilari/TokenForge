@@ -38,8 +38,6 @@ namespace TokenForge.Infrastructure.Service
                 var lockCheckResult = await _lockoutService.LoginLockedChecker(UserLogin.UserAccount);
                 if (lockCheckResult.IsFailure)
                 {
-                    // Assuming the error from LockoutService is appropriate to return,
-                    // or we can map it to a specific AuthError.
                     return AuthErrors.UserLockedOut;
                 }
                 
@@ -55,21 +53,19 @@ namespace TokenForge.Infrastructure.Service
                 var rolePerUserResult = await _userRoleService.GetRolesByUserIdAsync(currentUser.UsersId);
 
                 if (rolePerUserResult.IsFailure)
-                {
-                    // Propagate error from service, or return a more specific one
+                {                    
                     return rolePerUserResult.Error;
                 }
 
                 var rolePerUser = rolePerUserResult.Value;
                 if (rolePerUser == null || !rolePerUser.Any())
                 {
-                    return AuthErrors.Unauthorized; // Or a more specific "UserHasNoRoles" error
+                    return AuthErrors.Unauthorized; 
                 }
 
                 var rolesResult = await _roleService.GetRolesForUserAsync(rolePerUser);
                 if (rolesResult.IsFailure)
-                {
-                    // Propagate error from service
+                {                    
                     return rolesResult.Error;
                 }
                 var roles = rolesResult.Value;
@@ -113,11 +109,10 @@ namespace TokenForge.Infrastructure.Service
 
             if (userWithRolesResult.IsFailure)
             {
-                // Propagate the error from the user service, e.g., UserNotFound
+                
                 return userWithRolesResult.Error;
             }
-
-            // On success, get the actual object from the Value property
+            
             var userWithRoles = userWithRolesResult.Value;
 
             var user = new User
@@ -210,6 +205,3 @@ namespace TokenForge.Infrastructure.Service
         }
     }
 }
-
-
-

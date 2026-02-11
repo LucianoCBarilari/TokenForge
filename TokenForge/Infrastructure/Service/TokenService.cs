@@ -107,7 +107,6 @@ namespace TokenForge.Infrastructure.Service
                 var revokeResult = await RevokeRefreshTokens(userId, newToken);
                 if (revokeResult.IsFailure)
                 {
-                    // Error is already logged in RevokeRefreshTokens, so we just propagate it
                     return revokeResult.Error;
                 }
 

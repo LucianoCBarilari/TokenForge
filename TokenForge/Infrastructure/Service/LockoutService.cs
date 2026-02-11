@@ -29,7 +29,7 @@ namespace TokenForge.Infrastructure.Service
                 
                 if (loginAttempt == null)
                 {
-                    return new LoginAttemptResponse { Succeeded = true }; // No restrictions if no attempt record
+                    return new LoginAttemptResponse { Succeeded = true };
                 }
 
                 if (user != null && loginAttempt.UserId == Guid.Empty)
@@ -42,7 +42,6 @@ namespace TokenForge.Infrastructure.Service
                 if (loginAttempt.LockedUntil.HasValue && loginAttempt.LockedUntil > CurrentDate)
                 {
                     var errorMessage = $"User is locked out until {loginAttempt.LockedUntil:yyyy-MM-dd HH:mm:ss}";
-                    // This is a failure from the perspective of logging in.
                     return new Error("Lockout.UserLocked", errorMessage);
                 }
                 
@@ -102,12 +101,9 @@ namespace TokenForge.Infrastructure.Service
             {
                 var user = await _userRepository.GetByAccountAsync(userAccount);
 
-                // If the user does not exist, we cannot record a login attempt against them
-                // due to the FOREIGN KEY constraint. The login will fail regardless.
+                
                 if (user == null)
                 {
-                    // Silently succeed, as there's no user to lock out.
-                    // The authentication service will handle the "user not found" error.
                     return new LoginAttemptResponse { Succeeded = true };
                 }
 
@@ -119,7 +115,7 @@ namespace TokenForge.Infrastructure.Service
                     loginAttempt = new LoginAttempt
                     {
                         UserAttempt = userAccount,
-                        UserId = user.UsersId, // We know the user exists here.
+                        UserId = user.UsersId, 
                         FailedAttempts = 1,
                         LastAttemptAt = currentDate,
                         LockedUntil = null
