@@ -1,7 +1,5 @@
-using TokenForge.Domain.Shared;
+namespace TokenForge.Presentation;
 
-namespace TokenForge.WebApi.Models
-{
     public sealed class ApiResponse
     {
         public int StatusCode { get; init; }
@@ -37,5 +35,3 @@ namespace TokenForge.WebApi.Models
             };
         }
     }
-}
-

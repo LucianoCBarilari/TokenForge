@@ -1,21 +1,14 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.HttpOverrides;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using System.Text;
-using System.Threading.RateLimiting;
-using TokenForge.Application.Common;
-using TokenForge.Application.Interfaces;
+using Microsoft.OpenApi;
 using TokenForge.Application.Services.UseCases;
-using TokenForge.Domain.Interfaces;
-using TokenForge.Domain.Shared;
 using TokenForge.Infrastructure.Persistence.DataAccess;
 using TokenForge.Infrastructure.Persistence.Repositories;
 using TokenForge.Infrastructure.Service;
-using TokenForge.WebApi.Models;
-using Microsoft.AspNetCore.RateLimiting;
+using TokenForge.Presentation;
+
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -140,33 +133,38 @@ builder.Services.AddRateLimiter(options =>
 });
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(option =>
+builder.Services.AddSwaggerGen(options =>
 {
-    option.SwaggerDoc("v1", new OpenApiInfo { Title = "TokenForge API", Version = "v1" });
-    option.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    options.SwaggerDoc("v1", new OpenApiInfo
     {
-        In = ParameterLocation.Header,
-        Description = "Please enter a valid token",
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        BearerFormat = "JWT",
-        Scheme = "Bearer"
+        Title = "TokenForge API",
+        Version = "v1"
     });
-    option.AddSecurityRequirement(new OpenApiSecurityRequirement
+
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        Description = "Ingrese el token JWT así: Bearer {token}"
+    });
+
+    options.AddSecurityRequirement(document =>
+    {
+        return new OpenApiSecurityRequirement
         {
-            new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "Bearer"
-                }
-            },
-            Array.Empty<string>()
-        }
+                new OpenApiSecuritySchemeReference("Bearer"),
+                new List<string>()
+            }
+        };
     });
 });
+
+
+
 
 var app = builder.Build();
 
