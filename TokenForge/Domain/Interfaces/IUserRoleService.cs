@@ -7,8 +7,7 @@ using TokenForge.Domain.Shared;
 namespace TokenForge.Domain.Interfaces
 {
     public interface IUserRoleService
-    {
-       Task<Result<List<UserRoleResponse>>> GetAllUserRolesAsync();
+    {      
        Task<Result<UserRoleResponse>> GetUserRoleByIdAsync(Guid userRoleId);
        Task<Result> AssignRoleToUserAsync(AssignRoleRequest assignRole);
        Task<Result<List<UserResponse>>> GetAllUsersFromRole(Guid roleId);

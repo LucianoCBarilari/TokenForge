@@ -14,22 +14,7 @@ namespace TokenForge.Presentation.Controllers;
         ) : ControllerBase
     { 
 
-        [HttpGet]
-        public async Task<IActionResult> GetAllAsync()
-        {
-            logger.LogInformation("Attempting to retrieve all user roles.");
-            var result = await userRoleService.GetAllUserRolesAsync();
-
-            if (result.IsFailure)
-            {
-                logger.LogWarning("Failed to retrieve all user roles: {Error}", result.Error.Message);
-                return HandleFailure(result.Error);
-            }
-
-            logger.LogInformation("Successfully retrieved all user roles.");
-            return OkResponse(result.Value);
-        }
-
+        
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetById(Guid id)
         {

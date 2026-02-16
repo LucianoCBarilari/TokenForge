@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using TokenForge.Domain.Entities;
 
-namespace TokenForge.Infrastructure.Persistence.DataAccess
+namespace TokenForge.Infrastructure.DataAccess
 {
     public class TokenForgeContext : DbContext
     {

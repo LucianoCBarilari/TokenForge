@@ -2,13 +2,30 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using TokenForge.Application.Services.UseCases;
-using TokenForge.Infrastructure.Persistence.DataAccess;
-using TokenForge.Infrastructure.Persistence.Repositories;
+using Serilog;
+using Serilog.Events;
+using TokenForge.Application.Services;
+using TokenForge.Infrastructure.DataAccess;
 using TokenForge.Infrastructure.Service;
 using TokenForge.Presentation;
 
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .Enrich.WithThreadId()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
 
+    .WriteTo.File(
+        path: "logs/log-.txt",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 7,
+        fileSizeLimitBytes: 10 * 1024 * 1024,
+        rollOnFileSizeLimit: true,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] ({ThreadId}) {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,14 +34,7 @@ var connectionString = builder.Configuration.GetConnectionString("JWT_Security")
 
 builder.Services.AddDbContext<TokenForgeContext>(options => options.UseSqlServer(connectionString));
 
-builder.Services.AddScoped<IHelpers, Helpers>();
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
-builder.Services.AddScoped<IRoleRepository, RoleRepository>();
-builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-builder.Services.AddScoped<ILoginAttemptRepository, LoginAttemptRepository>();
-
+builder.Services.AddScoped<Helpers>();
 builder.Services.AddScoped<IRoleService, RoleService>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<ILockoutService, LockoutService>();

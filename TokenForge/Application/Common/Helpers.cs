@@ -1,10 +1,8 @@
-using TokenForge.Domain.Interfaces;
-using System;
 using System.Text.RegularExpressions;
 
 namespace TokenForge.Application.Common
 {
-    public class Helpers : IHelpers
+    public class Helpers 
     {
         /// <summary>
         /// Gets the current UTC time from the server.
