@@ -35,3 +35,5 @@ nuget.config.user
 # Appsettings secrets
 TokenForge/appsettings.Development.json
 
+.dotnet/
+
