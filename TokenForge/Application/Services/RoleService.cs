@@ -1,26 +1,19 @@
-using Microsoft.Extensions.Logging;
 using TokenForge.Application.Dtos.RoleDto;
 using TokenForge.Application.Dtos.UserRoleDto;
-using TokenForge.Domain.Entities;
-using TokenForge.Domain.Errors;
-using TokenForge.Domain.Interfaces;
-using TokenForge.Domain.Shared;
+using TokenForge.Infrastructure.DataAccess;
 
-namespace TokenForge.Application.Services.UseCases
-{
+namespace TokenForge.Application.Services;
+
     public class RoleService(
-        IRoleRepository roleRepository,
+        TokenForgeContext _dbContext,
         ILogger<RoleService> logger
         ) : IRoleService
     {
-        private readonly IRoleRepository _roleRepository = roleRepository;
-        private readonly ILogger<RoleService> _logger = logger;
-
         public async Task<Result<List<RoleResponse>>> GetAllRoles() 
         {
             try
             {
-                var roles = await _roleRepository.GetAllAsync() ?? new List<Role>();
+                var roles = await _dbContext.Roles.ToListAsync();
                 var mapped = roles.Select(role => new RoleResponse
                 {
                     RolesId = role.RolesId,
@@ -34,7 +27,7 @@ namespace TokenForge.Application.Services.UseCases
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while getting all roles.");
+                logger.LogError(ex, "Error occurred while getting all roles.");
                 return Result<List<RoleResponse>>.Failure(RoleErrors.OperationFailed);
             }
         }
@@ -43,7 +36,7 @@ namespace TokenForge.Application.Services.UseCases
         {
             try
             {
-                var role = await _roleRepository.GetByIdAsync(roleId);
+                var role = await _dbContext.Roles.FindAsync(roleId);
                 if (role == null)
                 {
                     return Result<RoleResponse>.Failure(RoleErrors.RoleNotFound);
@@ -61,7 +54,7 @@ namespace TokenForge.Application.Services.UseCases
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while getting role by ID {RoleId}.", roleId);
+                logger.LogError(ex, "Error occurred while getting role by ID {RoleId}.", roleId);
                 return Result<RoleResponse>.Failure(RoleErrors.OperationFailed);
             }
         }
@@ -70,9 +63,9 @@ namespace TokenForge.Application.Services.UseCases
         {        
             try
             {
-                var role = await _roleRepository.GetByIdAsync(updatedRole.RolesId);
+                var role = await _dbContext.Roles.FindAsync(updatedRole.RolesId);
 
-                if (role == null) // Check for null role before accessing properties
+                if (role == null)
                 {
                     return Result.Failure(RoleErrors.RoleNotFound);
                 }
@@ -81,13 +74,13 @@ namespace TokenForge.Application.Services.UseCases
                 role.RoleDescription = updatedRole.RoleDescription ?? role.RoleDescription;
                 role.IsActive = updatedRole.IsActive ?? role.IsActive;
 
-                await _roleRepository.UpdateAsync(role);
-                await _roleRepository.SaveChangesAsync();
+                _dbContext.Roles.Update(role);
+                await _dbContext.SaveChangesAsync();
                 return Result.Success();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while updating role {RoleId}.", updatedRole.RolesId);
+                logger.LogError(ex, "Error occurred while updating role {RoleId}.", updatedRole.RolesId);
                 return Result.Failure(RoleErrors.OperationFailed);
             }
         }
@@ -106,7 +99,9 @@ namespace TokenForge.Application.Services.UseCases
                     .Distinct()
                     .ToList();
                 
-                var roles = await _roleRepository.GetAllByIdAsync(roleIds);
+                var roles = await _dbContext.Roles
+                                 .Where(role => roleIds.Contains(role.RolesId))
+                                 .ToListAsync();
                 
                 var mapped = roles.Select(r => new RoleResponse
                 {
@@ -121,12 +116,8 @@ namespace TokenForge.Application.Services.UseCases
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error occurred while getting roles for user.");
+                logger.LogError(ex, "Error occurred while getting roles for user.");
                 return Result<List<RoleResponse>>.Failure(RoleErrors.OperationFailed);
             }
         }
     }
-}
-
-
-

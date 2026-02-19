@@ -1,30 +1,18 @@
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Net;
+using System.Security.Claims;
 using TokenForge.Application.Dtos.AuthDto;
 using TokenForge.Application.Dtos.RefreshTokenDto;
 using TokenForge.Domain.Entities;
-using TokenForge.Application.Interfaces;
-using TokenForge.Domain.Shared;
-using TokenForge.Domain.Errors;
-using System.Security.Claims;
-using System.Net;
-using Microsoft.Extensions.Logging; // Added for ILogger
-using Microsoft.AspNetCore.Http;
-using TokenForge.WebApi.Models;
-using Microsoft.AspNetCore.RateLimiting;
 
-namespace TokenForge.WebApi.Controllers
-{
+namespace TokenForge.Presentation.Controllers;
+
     [ApiController]
     [Route("api/auth")]
-    public class AuthController(IAuthService authService, ITokenService tokenService, ILogger<AuthController> logger) : Controller
-    {
+    public class AuthController(IAuthService authService, ITokenService tokenService, ILogger<AuthController> logger) : ControllerBase
+{
         private const string AccessTokenCookieName = "accessToken";
         private const string RefreshTokenCookieName = "refreshToken";
-
-        private readonly IAuthService _authService = authService;
-        private readonly ITokenService _tokenService = tokenService;
-        private readonly ILogger<AuthController> _logger = logger; // Initialized ILogger
 
         [AllowAnonymous]
         [EnableRateLimiting("login")]
@@ -33,7 +21,7 @@ namespace TokenForge.WebApi.Controllers
         {
             if (userLogin == null || string.IsNullOrEmpty(userLogin.UserAccount) || string.IsNullOrEmpty(userLogin.Password))
             {
-                _logger.LogWarning("Invalid login request: Missing user account or password.");
+                logger.LogWarning("Invalid login request: Missing user account or password.");
                 return FailResponse(AuthErrors.InvalidLoginRequest, StatusCodes.Status400BadRequest);
             }
 
@@ -41,14 +29,12 @@ namespace TokenForge.WebApi.Controllers
             {
                 UserAccount = WebUtility.HtmlEncode(userLogin.UserAccount.Trim()),
                 PasswordHash = userLogin.Password.Trim()
-            };
-
-            _logger.LogInformation("Attempting login for user {UserAccount}", userLogin.UserAccount);
-            Result<AuthResponse> authResult = await _authService.LoginAsync(user);
+            };            
+            Result<AuthResponse> authResult = await authService.LoginAsync(user);
 
             if (authResult.IsFailure)
             {
-                _logger.LogWarning("Login failed for user {UserAccount}: {Error}", userLogin.UserAccount, authResult.Error.Message);
+                logger.LogWarning("Login failed for user {UserAccount}: {Error}", userLogin.UserAccount, authResult.Error.Message);
                 return HandleFailure(authResult.Error);
             }
 
@@ -58,17 +44,13 @@ namespace TokenForge.WebApi.Controllers
             {
                 var accessTokenCookieOptions = BuildAccessTokenCookieOptions(successfulAuth.ExpiresIn);
                 Response.Cookies.Append(AccessTokenCookieName, successfulAuth.AccessToken, accessTokenCookieOptions);
-                _logger.LogInformation("Access token cookie appended for user {UserAccount}", userLogin.UserAccount);
             }
 
             if (!string.IsNullOrEmpty(successfulAuth.RefreshToken))
             {
                 var refreshTokenCookieOptions = BuildRefreshTokenCookieOptions();
                 Response.Cookies.Append(RefreshTokenCookieName, successfulAuth.RefreshToken, refreshTokenCookieOptions);
-                _logger.LogInformation("Refresh token cookie appended for user {UserAccount}", userLogin.UserAccount);
             }
-            
-            _logger.LogInformation("Login successful for user {UserAccount}", userLogin.UserAccount);
             return OkResponse(successfulAuth);
         }
 
@@ -79,20 +61,18 @@ namespace TokenForge.WebApi.Controllers
             var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid userId))
             {
-                _logger.LogWarning("Logout attempt failed: User not authenticated or UserId claim missing.");
+                logger.LogWarning("Logout attempt failed: User not authenticated or UserId claim missing.");
                 return FailResponse(AuthErrors.UserNotAuthenticated, StatusCodes.Status401Unauthorized);
             }
 
-            _logger.LogInformation("Attempting logout for user {UserId}", userId);
-            var result = await _authService.LogoutAsync(userId, logoutRequest.RefreshToken);
+            
+            var result = await authService.LogoutAsync(userId, logoutRequest.RefreshToken);
 
             if (result.IsFailure)
             {
-                _logger.LogWarning("Logout failed for user {UserId}: {Error}", userId, result.Error.Message);
+                logger.LogWarning("Logout failed for user {UserId}: {Error}", userId, result.Error.Message);
                 return HandleFailure(result.Error);
             }
-
-            _logger.LogInformation("Logout successful for user {UserId}", userId);
             Response.Cookies.Delete(AccessTokenCookieName);
             Response.Cookies.Delete(RefreshTokenCookieName);
             return OkResponse(message: "Logout successful");
@@ -110,27 +90,27 @@ namespace TokenForge.WebApi.Controllers
 
             if (string.IsNullOrWhiteSpace(accessToken))
             {
-                _logger.LogWarning("JWT validation request failed: Access token is missing.");
+                logger.LogWarning("JWT validation request failed: Access token is missing.");
                 return FailResponse(AuthErrors.TokenValidationFailed, StatusCodes.Status400BadRequest);
             }
 
             try
             {
                 var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-                var validationParameters = _authService.GetValidationParameters();
+                var validationParameters = authService.GetValidationParameters();
 
                 tokenHandler.ValidateToken(accessToken, validationParameters, out _);
-                _logger.LogInformation("JWT validated successfully.");
+                logger.LogInformation("JWT validated successfully.");
                 return OkResponse(message: "Token is valid.");
             }
             catch (Microsoft.IdentityModel.Tokens.SecurityTokenException ex)
             {
-                _logger.LogWarning(ex, "JWT validation failed: {Message}", ex.Message);
+                logger.LogWarning(ex, "JWT validation failed: {Message}", ex.Message);
                 return FailResponse(new Error(AuthErrors.TokenValidationFailed.Code, ex.Message), StatusCodes.Status401Unauthorized);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "An unexpected error occurred during JWT validation.");
+                logger.LogError(ex, "An unexpected error occurred during JWT validation.");
                 return FailResponse(AuthErrors.InternalServerError, StatusCodes.Status500InternalServerError);
             }
         }
@@ -144,11 +124,9 @@ namespace TokenForge.WebApi.Controllers
 
             if (string.IsNullOrEmpty(refreshToken))
             {
-                _logger.LogWarning("Refresh token request failed: Missing refresh token in header or cookie.");
+                logger.LogWarning("Refresh token request failed: Missing refresh token in header or cookie.");
                 return FailResponse(AuthErrors.MissingRefreshToken, StatusCodes.Status401Unauthorized);
-            }
-
-            _logger.LogInformation("Attempting to refresh access token for user {UserId}", refreshAccessTokenRequest.UserId);
+            }           
 
             var refreshTokenReq = new RefreshAccessTokenRequest
             {
@@ -156,22 +134,20 @@ namespace TokenForge.WebApi.Controllers
                 RefreshToken = refreshToken
             };
 
-            var validationResult = await _tokenService.ValidateRefreshToken(refreshTokenReq);
+            var validationResult = await tokenService.ValidateRefreshToken(refreshTokenReq);
             if (validationResult.IsFailure)
             {
-                _logger.LogWarning("Refresh token validation failed for user {UserId}: {Error}", refreshAccessTokenRequest.UserId, validationResult.Error.Message);
+                logger.LogWarning("Refresh token validation failed for user {UserId}: {Error}", refreshAccessTokenRequest.UserId, validationResult.Error.Message);
                 return HandleFailure(validationResult.Error);
             }
 
-            Result<string> newTokenResult = await _authService.GenerateNewJwtToken(refreshAccessTokenRequest.UserId);
+            Result<string> newTokenResult = await authService.GenerateNewJwtToken(refreshAccessTokenRequest.UserId);
 
             if (newTokenResult.IsFailure)
             {
-                _logger.LogWarning("Failed to generate new access token for user {UserId}: {Error}", refreshAccessTokenRequest.UserId, newTokenResult.Error.Message);
+                logger.LogWarning("Failed to generate new access token for user {UserId}: {Error}", refreshAccessTokenRequest.UserId, newTokenResult.Error.Message);
                 return HandleFailure(newTokenResult.Error);
             }
-
-            _logger.LogInformation("Access token refreshed successfully for user {UserId}", refreshAccessTokenRequest.UserId);
             var accessTokenCookieOptions = BuildAccessTokenCookieOptions();
             Response.Cookies.Append(AccessTokenCookieName, newTokenResult.Value, accessTokenCookieOptions);
             return OkResponse(new { accessToken = newTokenResult.Value });
@@ -183,19 +159,15 @@ namespace TokenForge.WebApi.Controllers
         {
             if (refreshAccessTokenRequest.UserId == Guid.Empty)
             {
-                _logger.LogWarning("Revoke refresh token request failed: User ID is required.");
+                logger.LogWarning("Revoke refresh token request failed: User ID is required.");
                 return FailResponse(AuthErrors.UserIdRequired, StatusCodes.Status400BadRequest);
             }
-            
-            _logger.LogInformation("Attempting to revoke all refresh tokens for user {UserId}", refreshAccessTokenRequest.UserId);
-            var result = await _tokenService.RevokeAllUserTokens(refreshAccessTokenRequest.UserId);
+            var result = await tokenService.RevokeAllUserTokens(refreshAccessTokenRequest.UserId);
             if (result.IsFailure)
             {
-                _logger.LogWarning("Revoking all refresh tokens failed for user {UserId}: {Error}", refreshAccessTokenRequest.UserId, result.Error.Message);
+                logger.LogWarning("Revoking all refresh tokens failed for user {UserId}: {Error}", refreshAccessTokenRequest.UserId, result.Error.Message);
                 return HandleFailure(result.Error);
             }
-            
-            _logger.LogInformation("All refresh tokens revoked successfully for user {UserId}", refreshAccessTokenRequest.UserId);
             Response.Cookies.Delete(AccessTokenCookieName);
             Response.Cookies.Delete(RefreshTokenCookieName);
             return OkResponse(message: "Refresh token revoked successfully.");
@@ -257,7 +229,6 @@ namespace TokenForge.WebApi.Controllers
             return StatusCode(statusCode, response);
         }
     }
-}
 
 
 
