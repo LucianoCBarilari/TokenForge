@@ -1,11 +1,9 @@
-using Microsoft.EntityFrameworkCore;
 using TokenForge.Domain.Entities;
 
 namespace TokenForge.Infrastructure.DataAccess
 {
-    public class TokenForgeContext : DbContext
-    {
-        public TokenForgeContext(DbContextOptions<TokenForgeContext> options) : base(options) { }
+    public class TokenForgeContext(DbContextOptions<TokenForgeContext> options)  : DbContext(options)
+    {       
         public virtual DbSet<User> Users { get; set; }
         public virtual DbSet<Role> Roles { get; set; }
         public virtual DbSet<UserRole> UserRoles { get; set; }
