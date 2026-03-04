@@ -1,7 +1,6 @@
 using Application.Feature.UserFeature;
 using Application.Feature.UserFeature.UserDto;
 using Domain.Errors;
-using Domain.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,7 +12,7 @@ namespace Web.Controllers;
 public class UserController(
     IUserService userService,
     ILogger<UserController> logger
-    ) : ControllerBase
+    ) : ApiControllerBase
 {
 
     [HttpPost]
@@ -24,9 +23,9 @@ public class UserController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to create new user account for {UserAccount}: {Error}", request.UserAccount, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(message: "User account created successfully.");
+        return Ok(new { message = "User account created successfully." });
     }
 
     [HttpPut("{userId:guid}/email")]
@@ -39,9 +38,9 @@ public class UserController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to update email for user {UserId}: {Error}", updateEmailDto.UserId, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(message: "Email updated successfully.");
+        return Ok(new { message = "Email updated successfully." });
     }
 
     [HttpPut("{userId:guid}/account")]
@@ -54,9 +53,9 @@ public class UserController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to update account name for user {UserId}: {Error}", updateUserAccountDto.UserId, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(message: "User account updated successfully.");
+        return Ok(new { message = "User account updated successfully." });
     }
 
     [HttpPut("{userId:guid}/password")]
@@ -68,9 +67,9 @@ public class UserController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to update password for user {UserId}: {Error}", changePasswordRequest.UserId, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(message: "Password updated successfully.");
+        return Ok(new { message = "Password updated successfully." });
     }
 
     [HttpPut("{userId:guid}/disable")]
@@ -82,9 +81,9 @@ public class UserController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to disable user {UserId}: {Error}", disableUserRequest.UserToDisable, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(message: "User disabled successfully.");
+        return Ok(new { message = "User disabled successfully." });
     }
 
     [HttpGet("{userId:guid}")]
@@ -95,9 +94,9 @@ public class UserController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to retrieve user with ID {UserId}: {Error}", userId, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(result.Value);
+        return ToActionResult(result);
     }
 
     [HttpGet("active")]
@@ -109,11 +108,11 @@ public class UserController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to retrieve all active users: {Error}", result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
 
         logger.LogInformation("Successfully retrieved all active users.");
-        return OkResponse(result.Value);
+        return ToActionResult(result);
     }
 
     [HttpGet("active-with-roles")]
@@ -125,11 +124,11 @@ public class UserController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to retrieve all active users with roles: {Error}", result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
 
         logger.LogInformation("Successfully retrieved all active users with roles.");
-        return OkResponse(result.Value);
+        return ToActionResult(result);
     }
 
     [HttpGet("{userId:guid}/with-roles")]
@@ -140,37 +139,16 @@ public class UserController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to retrieve active user with roles for ID {UserId}: {Error}", userId, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(result.Value);
+        return ToActionResult(result);
     }
 
-    private IActionResult HandleFailure(Error error)
+    protected override int ResolveStatusCode(Domain.Shared.Error error)
     {
-        return error switch
-        {
-            { Code: var code } when code == UserErrors.UserNotFound.Code => FailResponse(error, StatusCodes.Status404NotFound),
-            { Code: var code } when code == UserErrors.UserAlreadyExists.Code => FailResponse(error, StatusCodes.Status409Conflict),
-            { Code: var code } when code == UserErrors.EmailAlreadyInUse.Code => FailResponse(error, StatusCodes.Status409Conflict),
-            { Code: var code } when code == UserErrors.AccountAlreadyInUse.Code => FailResponse(error, StatusCodes.Status409Conflict),
-            { Code: var code } when code == UserErrors.InvalidPassword.Code => FailResponse(error, StatusCodes.Status400BadRequest),
-            { Code: var code } when code == UserErrors.PasswordMismatch.Code => FailResponse(error, StatusCodes.Status400BadRequest),
-            { Code: var code } when code == UserErrors.OldPasswordIncorrect.Code => FailResponse(error, StatusCodes.Status401Unauthorized),
-            { Code: var code } when code == UserErrors.UserDisabled.Code => FailResponse(error, StatusCodes.Status401Unauthorized),
-            { Code: var code } when code == RoleErrors.RoleNotFound.Code => FailResponse(error, StatusCodes.Status400BadRequest),
-            _ => FailResponse(error, StatusCodes.Status500InternalServerError)
-        };
-    }
+        if (error.Code == RoleErrors.RoleNotFound.Code)
+            return StatusCodes.Status400BadRequest;
 
-    private IActionResult OkResponse(object? result = null, string? message = null, int statusCode = StatusCodes.Status200OK)
-    {
-        var response = ApiResponse.SuccessResponse(result, message, statusCode, HttpContext?.TraceIdentifier);
-        return StatusCode(statusCode, response);
-    }
-
-    private IActionResult FailResponse(Error error, int statusCode, string? message = null)
-    {
-        var response = ApiResponse.FailureResponse(new[] { error }, message ?? error.Message, statusCode, HttpContext?.TraceIdentifier);
-        return StatusCode(statusCode, response);
+        return base.ResolveStatusCode(error);
     }
 }

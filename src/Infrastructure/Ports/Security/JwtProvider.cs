@@ -12,9 +12,19 @@ public sealed class JwtProvider(IConfiguration configuration) : IJwtProvider
     public string CreateAccessToken(
         Guid userId,
         string email,
-        IReadOnlyCollection<string> roles,
-        TimeSpan lifetime)
+        List<string> roles)
     {
+        string secret = configuration["JwtSettings:SecretKey"]
+           ?? throw new InvalidOperationException("SecretKey not found.");
+
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+
+        var accessTokenMinutesValue = configuration["JwtSettings:AccessTokenMinutes"]
+            ?? throw new InvalidOperationException("JwtSettings:AccessTokenMinutes not found.");
+
+        if (!int.TryParse(accessTokenMinutesValue, out var accessTokenMinutes))
+            throw new InvalidOperationException("JwtSettings:AccessTokenMinutes must be an integer.");
+
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, userId.ToString()),
@@ -24,17 +34,12 @@ public sealed class JwtProvider(IConfiguration configuration) : IJwtProvider
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
-        }
-
-        var secret = configuration["JwtSettings:SecretKey"]
-            ?? throw new InvalidOperationException("SecretKey not found.");
-
-        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
+        }        
 
         var descriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims, "jwt"),
-            Expires = DateTime.UtcNow.Add(lifetime),
+            Expires = DateTime.UtcNow.AddMinutes(accessTokenMinutes),
             SigningCredentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256Signature),
             Issuer = configuration["JwtSettings:Issuer"],
             Audience = configuration["JwtSettings:Audience"]

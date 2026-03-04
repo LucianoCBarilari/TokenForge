@@ -1,3 +1,9 @@
+/*
+ *TokenService issues refresh tokens as high-entropy, cryptographically random
+ * values for OAuth 2.0 session renewal.
+ * RFC 6749 1.5: https://datatracker.ietf.org/doc/html/rfc6749#section-1.5
+ * RFC 6819 5.1.4.2.2: https://datatracker.ietf.org/doc/html/rfc6819#section-5.1.4.2.2
+ */
 using Application.Abstractions.Common;
 using Application.Feature.TokenFeature.RefreshTokenDto;
 using System.Security.Cryptography;
@@ -9,14 +15,26 @@ public class TokenService(
     IClock clock,
     ILogger<TokenService> logger) : ITokenService
 {
+    //Corregir esto no debe ir aqui, se debe configurar desde el appsettings o similar  
     private static readonly TimeSpan RefreshTokenLifetime = TimeSpan.FromDays(30);
 
+
+    /*
+     *https://datatracker.ietf.org/doc/html/rfc6819#section-5.1.4.2.2 
+     *Refresh tokens are generated with cryptographically secure randomness
+     *(RFC 6819 5.1.4.2.2) and used as OAuth 2.0 refresh credentials
+     *(RFC 6749 1.5).
+    */
+    /*
+     * IDE:CA1872
+     * https://learn.microsoft.com/es-es/dotnet/fundamentals/code-analysis/quality-rules/ca1872
+     */
     private string GenerateRefreshToken()
     {
         var randomNumber = new byte[64];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomNumber);
-        return BitConverter.ToString(randomNumber).Replace("-", "");
+        return Convert.ToHexString(randomNumber);
     }
 
     public async Task<Result> ValidateRefreshToken(RefreshAccessTokenRequest request)
@@ -49,7 +67,7 @@ public class TokenService(
             var now = clock.UtcNow;
             var tokens = await authStore.GetActiveRefreshTokensAsync(userId, now);
 
-            if (tokens.Any())
+            if (tokens.Count != 0)
             {
                 foreach (var refreshToken in tokens)
                 {

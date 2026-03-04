@@ -1,7 +1,5 @@
 using Application.Feature.UserRoleFeature;
 using Application.Feature.UserRoleFeature.UserRoleDto;
-using Domain.Errors;
-using Domain.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -13,7 +11,7 @@ namespace Web.Controllers;
 public class UserRoleController(
     IUserRoleService userRoleService,
     ILogger<UserRoleController> logger
-    ) : ControllerBase
+    ) : ApiControllerBase
 {
 
 
@@ -26,9 +24,9 @@ public class UserRoleController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to retrieve user role with ID {Id}: {Error}", id, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(result.Value);
+        return ToActionResult(result);
     }
 
     [HttpPost]
@@ -40,9 +38,9 @@ public class UserRoleController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to assign role {RoleId} to user {UserId}: {Error}", assignRoleRequest.RoleId, assignRoleRequest.UserId, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(message: "Role assigned successfully.");
+        return Ok(new { message = "Role assigned successfully." });
     }
 
     [HttpPost("revoke")]
@@ -53,9 +51,9 @@ public class UserRoleController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to revoke role {RoleId} from user {UserId}: {Error}", revokeRoleRequest.RoleId, revokeRoleRequest.UserId, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(message: "Role revoked successfully.");
+        return Ok(new { message = "Role revoked successfully." });
     }
 
     [HttpGet("~/api/users/{userId:guid}/roles")]
@@ -66,9 +64,9 @@ public class UserRoleController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to retrieve roles for user {UserId}: {Error}", userId, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(result.Value);
+        return ToActionResult(result);
     }
 
     [HttpGet("~/api/roles/{roleId:guid}/users")]
@@ -79,33 +77,8 @@ public class UserRoleController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to retrieve users for role {RoleId}: {Error}", roleId, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(result.Value);
-    }
-
-    private IActionResult HandleFailure(Error error)
-    {
-        return error switch
-        {
-            { Code: var code } when code == UserRoleErrors.UserNotFound.Code => FailResponse(error, StatusCodes.Status404NotFound),
-            { Code: var code } when code == UserRoleErrors.RoleNotFound.Code => FailResponse(error, StatusCodes.Status404NotFound),
-            { Code: var code } when code == UserRoleErrors.UserAlreadyInRole.Code => FailResponse(error, StatusCodes.Status409Conflict),
-            { Code: var code } when code == UserRoleErrors.ActiveAssignmentNotFound.Code => FailResponse(error, StatusCodes.Status404NotFound),
-            { Code: var code } when code == UserRoleErrors.UserRoleNotFound.Code => FailResponse(error, StatusCodes.Status404NotFound),
-            _ => FailResponse(error, StatusCodes.Status500InternalServerError)
-        };
-    }
-
-    private IActionResult OkResponse(object? result = null, string? message = null, int statusCode = StatusCodes.Status200OK)
-    {
-        var response = ApiResponse.SuccessResponse(result, message, statusCode, HttpContext?.TraceIdentifier);
-        return StatusCode(statusCode, response);
-    }
-
-    private IActionResult FailResponse(Error error, int statusCode, string? message = null)
-    {
-        var response = ApiResponse.FailureResponse(new[] { error }, message ?? error.Message, statusCode, HttpContext?.TraceIdentifier);
-        return StatusCode(statusCode, response);
+        return ToActionResult(result);
     }
 }

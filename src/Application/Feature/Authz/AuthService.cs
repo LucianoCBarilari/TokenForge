@@ -13,9 +13,8 @@ public class AuthService(
     IJwtProvider jwtProvider,
     ITokenService tokenService,
     ILogger<AuthService> logger) : IAuthService
-{
-    private static readonly TimeSpan AccessTokenLifetime = TimeSpan.FromMinutes(30);
-    private const int AccessTokenExpiresInSeconds = 900;
+{    
+    
 
     public async Task<Result<AuthResponse>> LoginAsync(User userLogin)
     {
@@ -53,11 +52,14 @@ public class AuthService(
         var accessToken = jwtProvider.CreateAccessToken(
             currentUser.UsersId,
             currentUser.Email,
-            roleNames,
-            AccessTokenLifetime);
+            roleNames);
 
-        return Result<AuthResponse>.Success(
-            AuthResponse.Success(accessToken, refreshTokenResult.Value, AccessTokenExpiresInSeconds));
+        return Result<AuthResponse>.Success(AuthResponse.Success(
+            accessToken,
+            refreshTokenResult.Value,
+            currentUser.UsersId,
+            currentUser.UserAccount,
+            roleNames));
     }
 
     public async Task<Result<string>> GenerateNewJwtToken(Guid userId)
@@ -73,8 +75,7 @@ public class AuthService(
         var newAccessToken = jwtProvider.CreateAccessToken(
             user.UsersId,
             user.Email,
-            roleNames,
-            AccessTokenLifetime);
+            roleNames);
 
         return Result<string>.Success(newAccessToken);
     }

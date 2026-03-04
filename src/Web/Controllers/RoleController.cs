@@ -1,6 +1,4 @@
 using Application.Feature.RoleFeature;
-using Domain.Errors;
-using Domain.Shared;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -12,7 +10,7 @@ namespace Web.Controllers;
 public class RoleController(
     IRoleService roleService,
     ILogger<RoleController> logger
-    ) : ControllerBase
+    ) : ApiControllerBase
 {
 
     [HttpGet]
@@ -24,11 +22,11 @@ public class RoleController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to retrieve all roles: {Error}", result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
 
         logger.LogInformation("Successfully retrieved all roles.");
-        return OkResponse(result.Value);
+        return ToActionResult(result);
     }
 
     [HttpGet("{roleId:guid}")]
@@ -39,11 +37,11 @@ public class RoleController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to retrieve role with ID {RoleId}: {Error}", roleId, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
 
         logger.LogInformation("Successfully retrieved role with ID {RoleId}.", roleId);
-        return OkResponse(result.Value);
+        return ToActionResult(result);
     }
 
     [HttpPut("{roleId:guid}")]
@@ -56,29 +54,9 @@ public class RoleController(
         if (result.IsFailure)
         {
             logger.LogWarning("Failed to update role with ID {RoleId}: {Error}", updateRoleRequest.RolesId, result.Error.Message);
-            return HandleFailure(result.Error);
+            return HandleFailure(result);
         }
-        return OkResponse(message: "Role updated successfully.");
-    }
-    private IActionResult HandleFailure(Error error)
-    {
-        return error switch
-        {
-            { Code: var code } when code == RoleErrors.RoleNotFound.Code => FailResponse(error, StatusCodes.Status404NotFound),
-            _ => FailResponse(error, StatusCodes.Status500InternalServerError)
-        };
-    }
-
-    private IActionResult OkResponse(object? result = null, string? message = null, int statusCode = StatusCodes.Status200OK)
-    {
-        var response = ApiResponse.SuccessResponse(result, message, statusCode, HttpContext?.TraceIdentifier);
-        return StatusCode(statusCode, response);
-    }
-
-    private IActionResult FailResponse(Error error, int statusCode, string? message = null)
-    {
-        var response = ApiResponse.FailureResponse(new[] { error }, message ?? error.Message, statusCode, HttpContext?.TraceIdentifier);
-        return StatusCode(statusCode, response);
+        return Ok(new { message = "Role updated successfully." });
     }
 }
 
