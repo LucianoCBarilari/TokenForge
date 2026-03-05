@@ -17,56 +17,46 @@ namespace Application.Feature.TokenFeature;
 // RFC 6819 §5.1.4.1.3 (avoid cleartext token material at rest)
 // https://datatracker.ietf.org/doc/html/rfc6819#section-5.1.4.1.3
 public class TokenService(
-    IAuthStore authStore,
     IUserStore userStore,
     IUserRoleStore userRoleStore,
     IJwtProvider jwtProvider,
-    IClock clock,
-    IConfiguration configuration,
-    ILogger<TokenService> logger) : ITokenService
+    IConfiguration configuration) : ITokenService
 {
-    //Corregir esto no debe ir aqui, se debe configurar desde el appsettings o similar  
-    private static readonly TimeSpan RefreshTokenLifetime = TimeSpan.FromDays(30);
-    private readonly string _refreshTokenHashKey = configuration["RefreshTokenSecurity:HashKey"]
+    private readonly string refreshTokenHashKey = configuration["RefreshTokenSecurity:HashKey"]
         ?? throw new InvalidOperationException("RefreshTokenSecurity:HashKey not found.");
-    
+
     /*
      * IDE:CA1872
      * https://learn.microsoft.com/es-es/dotnet/fundamentals/code-analysis/quality-rules/ca1872
      */
-    private string GenerateRefreshToken()
+    public Result<string> GenerateNewRefreshToken()
     {
         var randomNumber = new byte[64];
         using var rng = RandomNumberGenerator.Create();
         rng.GetBytes(randomNumber);
-        return Convert.ToHexString(randomNumber);
+        string result = Convert.ToHexString(randomNumber);
+
+        return Result<string>.Success(result);
     }
 
     // Store and query refresh tokens as HMAC-SHA256 hash instead of cleartext.
-    private string HashRefreshToken(string refreshToken)
+    public Result<string> HashRefreshToken(string refreshToken)
     {
-        var keyBytes = Encoding.UTF8.GetBytes(_refreshTokenHashKey);
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            return Result<string>.Failure(AuthErrors.MissingRefreshToken);
+
+        var keyBytes = Encoding.UTF8.GetBytes(refreshTokenHashKey);
         var tokenBytes = Encoding.UTF8.GetBytes(refreshToken);
+
         using var hmac = new HMACSHA256(keyBytes);
         var hash = hmac.ComputeHash(tokenBytes);
-        return Convert.ToHexString(hash);
-    }
 
-    public async Task<Result<RefreshToken>> ValidateRefreshToken(string refreshToken)
+        return Result<string>.Success(Convert.ToHexString(hash));
+    }    
+    public async Task<Result<string>> GenerateNewAccessTokenAsync(Guid userId)
     {
-        var tokenHash = HashRefreshToken(refreshToken);
-        var refreshT = await authStore.GetValidRefreshTokenAsync(tokenHash, clock.UtcNow);
-
-        if (refreshT is null)
-        {
-            return Result<RefreshToken>.Failure(AuthErrors.InvalidRefreshToken);
-        }
-
-        return Result<RefreshToken>.Success(refreshT);
-    }
-    public async Task<Result<string>> GenerateNewJwtToken(Guid userId)
-    {
-        var user = await userStore.GetByIdAsync(userId);
+        User? user = await userStore.GetByIdAsync(userId);
+        
         if (user is null || !user.IsActive)
             return AuthErrors.UserNotFound;
 
@@ -80,85 +70,5 @@ public class TokenService(
             roleNames);
 
         return Result<string>.Success(newAccessToken);
-    }
-
-    public async Task<Result> RevokeRefreshTokens(Guid userId, string newToken)
-    {
-        var newTokenHash = HashRefreshToken(newToken);
-        var now = clock.UtcNow;
-        var tokens = await authStore.GetActiveRefreshTokensAsync(userId, now);
-
-        if (tokens.Count != 0)
-        {
-            foreach (var refreshToken in tokens)
-            {
-                refreshToken.RevokedAt = now;
-                refreshToken.ReplacedByToken = newTokenHash;
-            }
-
-            authStore.UpdateRefreshTokens(tokens);
-            await authStore.SaveChangesAsync();
-        }
-
-        return Result.Success();
-    }
-
-    public async Task<Result> RevokeAllUserTokens(Guid userId)
-    {
-        var now = clock.UtcNow;
-        var tokens = await authStore.GetActiveRefreshTokensAsync(userId, now);
-
-        if (tokens.Count != 0)
-        {
-            foreach (var token in tokens)
-            {
-                token.RevokedAt = now;
-            }
-
-            authStore.UpdateRefreshTokens(tokens);
-            await authStore.SaveChangesAsync();
-        }
-
-        return Result.Success();
-    }
-
-    public async Task<Result<string>> CreateTokenAsync(Guid userId)
-    {
-        var now = clock.UtcNow;
-        var newToken = GenerateRefreshToken();
-        var revokeResult = await RevokeRefreshTokens(userId, newToken);
-        if (revokeResult.IsFailure)
-        {
-            return revokeResult.Error;
-        }
-
-        var refreshToken = new RefreshToken
-        {
-            UserId = userId,
-            Token = HashRefreshToken(newToken),
-            CreatedAt = now,
-            ExpiresAt = now.Add(RefreshTokenLifetime)
-        };
-
-        await authStore.AddRefreshTokenAsync(refreshToken);
-        await authStore.SaveChangesAsync();
-        return Result<string>.Success(newToken);       
-    }
-
-    public async Task<Result> RevokeCurrentSession(Guid userId, string refreshToken)
-    {
-        var tokenHash = HashRefreshToken(refreshToken);
-        var token = await authStore.GetActiveRefreshTokenByValueAsync(userId, tokenHash);
-        if (token is null)
-        {
-            return Result.Failure(AuthErrors.InvalidRefreshToken);
-        }
-
-        token.RevokedAt = clock.UtcNow;
-        token.ReplacedByToken = null;
-
-        authStore.UpdateRefreshToken(token);
-        await authStore.SaveChangesAsync();
-        return Result.Success();
-    }
+    }     
 }

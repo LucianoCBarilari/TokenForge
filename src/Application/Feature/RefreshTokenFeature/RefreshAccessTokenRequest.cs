@@ -1,4 +1,4 @@
-namespace Application.Feature.TokenFeature.RefreshTokenDto
+namespace Application.Feature.RefreshTokenFeature
 {
     public class RefreshAccessTokenRequest
     {

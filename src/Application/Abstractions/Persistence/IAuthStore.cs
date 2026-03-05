@@ -25,4 +25,5 @@ public interface IAuthStore
     void UpdateRefreshToken(RefreshToken token);
     void UpdateRefreshTokens(IEnumerable<RefreshToken> tokens);
     Task SaveChangesAsync(CancellationToken ct = default);
+    Task<RefreshToken?> FindByIdAndTokenAsync(Guid userId, string tokenHash, CancellationToken ct = default);
 }

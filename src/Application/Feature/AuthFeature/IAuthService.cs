@@ -1,6 +1,6 @@
-using Application.Feature.Authz.AuthDto;
+using Application.Feature.AuthFeature.AuthDto;
 
-namespace Application.Feature.Authz;
+namespace Application.Feature.AuthFeature;
 
 public interface IAuthService
 {

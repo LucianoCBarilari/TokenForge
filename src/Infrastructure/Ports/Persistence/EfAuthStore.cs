@@ -72,6 +72,13 @@ public sealed class EfAuthStore(TokenForgeContext dbContext) : IAuthStore
     {
         dbContext.RefreshTokens.UpdateRange(tokens);
     }
+    public Task<RefreshToken?> FindByIdAndTokenAsync(Guid userId, string tokenHash, CancellationToken ct = default)
+    {
+        return dbContext.RefreshTokens
+            .FirstOrDefaultAsync(
+                rt => rt.UserId == userId && rt.Token == tokenHash,
+                ct);
+    }
 
     public Task SaveChangesAsync(CancellationToken ct = default)
     {

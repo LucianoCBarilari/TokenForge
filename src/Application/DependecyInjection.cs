@@ -1,6 +1,7 @@
 using Application.Common;
-using Application.Feature.Authz;
+using Application.Feature.AuthFeature;
 using Application.Feature.LockoutFeature;
+using Application.Feature.RefreshTokenFeature;
 using Application.Feature.RoleFeature;
 using Application.Feature.TokenFeature;
 using Application.Feature.UserFeature;
@@ -16,6 +17,7 @@ public static class DependecyInjection
     {
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<ILockoutService, LockoutService>();
+        builder.Services.AddScoped<IHandleRefreshToken, HandleRefreshToken>();
         builder.Services.AddScoped<ITokenService, TokenService>();
         builder.Services.AddScoped<IUserService, UserService>();
         builder.Services.AddScoped<IUserRoleService, UserRoleService>();

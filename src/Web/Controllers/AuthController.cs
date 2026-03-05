@@ -1,7 +1,8 @@
-using Application.Feature.Authz;
-using Application.Feature.Authz.AuthDto;
+
+using Application.Feature.AuthFeature;
+using Application.Feature.AuthFeature.AuthDto;
+using Application.Feature.RefreshTokenFeature;
 using Application.Feature.TokenFeature;
-using Application.Feature.TokenFeature.RefreshTokenDto;
 using Domain.Entities;
 using Domain.Errors;
 using Domain.Shared;
@@ -9,7 +10,6 @@ using Infrastructure.Ports.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using System.Net;
 using System.Security.Claims;
 using Web.Security;
 
@@ -19,6 +19,7 @@ namespace Web.Controllers;
 [Route("api/auth")]
 public class AuthController(
     IAuthService authService,
+    IHandleRefreshToken handleRefreshToken,
     ITokenService tokenService,
     IJwtValidationParametersProvider jwtValidationParametersProvider,
     AuthCookieWriter authCookieWriter,
@@ -58,13 +59,19 @@ public class AuthController(
         var refreshTokenCookieOptions = authCookieWriter.BuildRefreshTokenCookieOptions();
         Response.Cookies.Append(RefreshTokenCookieName, successfulAuth.RefreshToken, refreshTokenCookieOptions);
         
-        var loginResponse = LoginResponse.FromAuth(successfulAuth);
-        return Ok(loginResponse);
+        return Ok(new
+        {
+            userId = successfulAuth.UserId,
+            userAccount = successfulAuth.UserAccount,
+            roles = successfulAuth.Roles,
+            tokenType = successfulAuth.TokenType,
+            message = "Login successful."
+        });
     }
 
     [Authorize]
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout([FromBody] LogoutRequest logoutRequest)
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest? logoutRequest)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid userId))
@@ -72,9 +79,17 @@ public class AuthController(
             logger.LogWarning("Logout attempt failed: User not authenticated or UserId claim missing.");
             return HandleFailure(Result.Failure(AuthErrors.UserNotAuthenticated));
         }
+        var refreshToken = logoutRequest?.RefreshToken;
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            refreshToken = Request.Headers["refreshToken"].FirstOrDefault() ?? Request.Cookies[RefreshTokenCookieName];
 
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            logger.LogWarning("Logout failed for user {UserId}: Missing refresh token in body, header or cookie.", userId);
+            return HandleFailure(Result.Failure(AuthErrors.MissingRefreshToken));
+        }
 
-        var result = await authService.LogoutAsync(userId, logoutRequest.RefreshToken);
+        var result = await authService.LogoutAsync(userId, refreshToken);
 
         if (result.IsFailure)
         {
@@ -88,9 +103,9 @@ public class AuthController(
 
     [Authorize]
     [HttpPost("tokens/validate")]
-    public async Task<IActionResult> ValidateJwt([FromBody] AccessTokenRequest accessTokenRequest)
+    public IActionResult ValidateJwt([FromBody] AccessTokenRequest? accessTokenRequest)
     {
-        var accessToken = accessTokenRequest.AccessToken;
+        var accessToken = accessTokenRequest?.AccessToken;
         if (string.IsNullOrWhiteSpace(accessToken))
         {
             accessToken = Request.Cookies[AccessTokenCookieName];
@@ -120,7 +135,7 @@ public class AuthController(
         catch (Microsoft.IdentityModel.Tokens.SecurityTokenException ex)
         {
             logger.LogWarning(ex, "JWT validation failed: {Message}", ex.Message);
-            return HandleFailure(Result.Failure(new Error(AuthErrors.TokenValidationFailed.Code, ex.Message)));
+            return HandleFailure(Result.Failure(AuthErrors.TokenValidationFailed));
         }
         catch (Exception ex)
         {
@@ -134,6 +149,7 @@ public class AuthController(
     [HttpPost("tokens/refresh")]
     public async Task<IActionResult> RefreshAccessToken()
     {
+        var ct = HttpContext.RequestAborted;
         string refreshToken = Request.Headers["refreshToken"].FirstOrDefault() ?? 
                               Request.Cookies[RefreshTokenCookieName] ?? string.Empty;
 
@@ -143,43 +159,87 @@ public class AuthController(
             return HandleFailure(Result.Failure(AuthErrors.MissingRefreshToken));
         }
 
-        var validationResult = await tokenService.ValidateRefreshToken(refreshToken);
+        var validationResult = await handleRefreshToken.ValidateRefreshToken(refreshToken, ct);
         if (validationResult.IsFailure)
         {
             logger.LogWarning("Refresh token validation failed: {Error}", validationResult.Error.Message);
             return HandleFailure(validationResult);
         }
 
-        Result<string> newTokenResult = await tokenService.GenerateNewJwtToken(validationResult.Value.UserId);
+        var userId = validationResult.Value.UserId;
+        var rotateResult = await handleRefreshToken.RotateRefreshTokenSecure(userId, refreshToken, ct);
+        if (rotateResult.IsFailure)
+        {
+            logger.LogWarning("Refresh token rotation failed for user {UserId}: {Error}", userId, rotateResult.Error.Message);
+            return HandleFailure(rotateResult);
+        }
+
+        Result<string> newTokenResult = await tokenService.GenerateNewAccessTokenAsync(userId);
 
         if (newTokenResult.IsFailure)
         {
-            logger.LogWarning("Failed to generate new access token for user {UserId}: {Error}", validationResult.Value.UserId, newTokenResult.Error.Message);
+            logger.LogWarning("Failed to generate new access token for user {UserId}: {Error}", userId, newTokenResult.Error.Message);
             return HandleFailure(newTokenResult);
         }
+
         var accessTokenCookieOptions = authCookieWriter.BuildAccessTokenCookieOptions();
         Response.Cookies.Append(AccessTokenCookieName, newTokenResult.Value, accessTokenCookieOptions);
-        return Ok(new { accessToken = newTokenResult.Value });
+
+        var refreshTokenCookieOptions = authCookieWriter.BuildRefreshTokenCookieOptions();
+        Response.Cookies.Append(RefreshTokenCookieName, rotateResult.Value, refreshTokenCookieOptions);
+
+        return Ok(new { message = "Token refreshed successfully." });
     }
 
     [Authorize]
-    [HttpPost("tokens/revoke")]
-    public async Task<IActionResult> RevokeRefreshToken([FromBody] RefreshAccessTokenRequest refreshAccessTokenRequest)
+    [HttpPost("tokens/revoke/current")]
+    public async Task<IActionResult> RevokeCurrentRefreshToken([FromBody] RefreshAccessTokenRequest? request)
     {
-        if (refreshAccessTokenRequest.UserId == Guid.Empty)
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (userIdClaim == null || !Guid.TryParse(userIdClaim, out Guid userId))
         {
-            logger.LogWarning("Revoke refresh token request failed: User ID is required.");
-            return HandleFailure(Result.Failure(AuthErrors.UserIdRequired));
+            logger.LogWarning("Revoke current refresh token failed: User not authenticated or UserId claim missing.");
+            return HandleFailure(Result.Failure(AuthErrors.UserNotAuthenticated));
         }
-        var result = await tokenService.RevokeAllUserTokens(refreshAccessTokenRequest.UserId);
+
+        var refreshToken = request?.RefreshToken;
+        if (string.IsNullOrWhiteSpace(refreshToken))
+            refreshToken = Request.Headers["refreshToken"].FirstOrDefault() ?? Request.Cookies[RefreshTokenCookieName];
+
+        if (string.IsNullOrWhiteSpace(refreshToken))
+        {
+            logger.LogWarning("Revoke current refresh token failed: Missing refresh token in body, header or cookie.");
+            return HandleFailure(Result.Failure(AuthErrors.MissingRefreshToken));
+        }
+
+        var result = await handleRefreshToken.RevokeCurrentSession(userId, refreshToken, HttpContext.RequestAborted);
         if (result.IsFailure)
         {
-            logger.LogWarning("Revoking all refresh tokens failed for user {UserId}: {Error}", refreshAccessTokenRequest.UserId, result.Error.Message);
+            logger.LogWarning("Revoke current refresh token failed for user {UserId}: {Error}", userId, result.Error.Message);
             return HandleFailure(result);
         }
-        Response.Cookies.Delete(AccessTokenCookieName);
+
         Response.Cookies.Delete(RefreshTokenCookieName);
-        return Ok(new { message = "Refresh token revoked successfully." });
+        return Ok(new { message = "Current refresh token revoked successfully." });
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("tokens/revoke/users/{userId:guid}")]
+    public async Task<IActionResult> RevokeAllUserRefreshTokens(Guid userId)
+    {
+        if (userId == Guid.Empty)
+        {
+            logger.LogWarning("Admin revoke all refresh tokens failed: User ID is required.");
+            return HandleFailure(Result.Failure(AuthErrors.UserIdRequired));
+        }
+
+        var result = await handleRefreshToken.RevokeAllUserTokens(userId, HttpContext.RequestAborted);
+        if (result.IsFailure)
+        {
+            logger.LogWarning("Admin revoke all refresh tokens failed for user {UserId}: {Error}", userId, result.Error.Message);
+            return HandleFailure(result);
+        }
+        return Ok(new { message = "All refresh tokens revoked successfully for user." });
     }    
 
 }

@@ -1,4 +1,4 @@
-namespace Application.Feature.Authz.AuthDto;
+namespace Application.Feature.AuthFeature.AuthDto;
 
 public class AuthResponse
 {

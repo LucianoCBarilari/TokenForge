@@ -1,9 +1,10 @@
 using Application.Abstractions.Security;
-using Application.Feature.Authz.AuthDto;
+using Application.Feature.AuthFeature.AuthDto;
 using Application.Feature.LockoutFeature;
+using Application.Feature.RefreshTokenFeature;
 using Application.Feature.TokenFeature;
 
-namespace Application.Feature.Authz;
+namespace Application.Feature.AuthFeature;
 
 public class AuthService(
     IUserStore userStore,
@@ -11,6 +12,7 @@ public class AuthService(
     ILockoutService lockoutService,
     IPasswordHasherPort passwordHasher,
     IJwtProvider jwtProvider,
+    IHandleRefreshToken handleRefreshToken,
     ITokenService tokenService,
     ILogger<AuthService> logger) : IAuthService
 {    
@@ -45,7 +47,7 @@ public class AuthService(
             logger.LogWarning("Failed to reset login attempts for {UserAccount}: {Error}", userLogin.UserAccount, resetResult.Error.Message);
         }
 
-        var refreshTokenResult = await tokenService.CreateTokenAsync(currentUser.UsersId);
+        var refreshTokenResult = await handleRefreshToken.CreateRefreshTokenAsync(currentUser.UsersId);
         if (refreshTokenResult.IsFailure)
             return refreshTokenResult.Error;
 
@@ -63,7 +65,7 @@ public class AuthService(
     }
     public async Task<Result> LogoutAsync(Guid userId, string refreshToken)
     {
-        var result = await tokenService.RevokeCurrentSession(userId, refreshToken);
+        var result = await handleRefreshToken.RevokeCurrentSession(userId, refreshToken);
         if (result.IsFailure)
             return Result.Failure(AuthErrors.LogoutFailed);
 
