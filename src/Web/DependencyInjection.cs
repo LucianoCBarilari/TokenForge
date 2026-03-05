@@ -7,6 +7,7 @@ using Serilog.Events;
 using System.Text;
 using System.Text.Json;
 using System.Threading.RateLimiting;
+using Web.Security;
 
 namespace Web;
 
@@ -20,6 +21,7 @@ public static class DependencyInjection
         AddWebCors(builder);
         AddWebRateLimiting(builder);
         AddWebSwagger(builder);
+        builder.Services.AddScoped<AuthCookieWriter>();
 
         builder.Services.AddControllers()
          .AddJsonOptions(options =>
