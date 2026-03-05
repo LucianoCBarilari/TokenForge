@@ -23,19 +23,16 @@ public sealed class EfAuthStore(TokenForgeContext dbContext) : IAuthStore
         dbContext.LoginAttempts.Update(attempt);
     }
 
-    public Task<RefreshToken?> GetValidRefreshTokenAsync(
-        Guid userId,
+    public Task<RefreshToken?> GetValidRefreshTokenAsync(        
         string token,
         DateTime nowUtc,
         CancellationToken ct = default)
     {
         return dbContext.RefreshTokens
-            .Where(x => x.UserId == userId &&
+            .FirstOrDefaultAsync(x => 
                         x.Token == token &&
                         x.ExpiresAt > nowUtc &&
-                        x.RevokedAt == null)
-            .OrderByDescending(x => x.ExpiresAt)
-            .FirstOrDefaultAsync(ct);
+                        x.RevokedAt == null,ct);
     }
 
     public Task<List<RefreshToken>> GetActiveRefreshTokensAsync(

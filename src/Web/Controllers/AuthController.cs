@@ -132,9 +132,10 @@ public class AuthController(
     [AllowAnonymous]
     [EnableRateLimiting("refresh")]
     [HttpPost("tokens/refresh")]
-    public async Task<IActionResult> RefreshAccessToken([FromBody] RefreshAccessTokenRequest refreshAccessTokenRequest)
+    public async Task<IActionResult> RefreshAccessToken()
     {
-        string? refreshToken = Request.Headers["refreshToken"].FirstOrDefault() ?? Request.Cookies[RefreshTokenCookieName];
+        string refreshToken = Request.Headers["refreshToken"].FirstOrDefault() ?? 
+                              Request.Cookies[RefreshTokenCookieName] ?? string.Empty;
 
         if (string.IsNullOrEmpty(refreshToken))
         {
@@ -142,24 +143,18 @@ public class AuthController(
             return HandleFailure(Result.Failure(AuthErrors.MissingRefreshToken));
         }
 
-        var refreshTokenReq = new RefreshAccessTokenRequest
-        {
-            UserId = refreshAccessTokenRequest.UserId,
-            RefreshToken = refreshToken
-        };
-
-        var validationResult = await tokenService.ValidateRefreshToken(refreshTokenReq);
+        var validationResult = await tokenService.ValidateRefreshToken(refreshToken);
         if (validationResult.IsFailure)
         {
-            logger.LogWarning("Refresh token validation failed for user {UserId}: {Error}", refreshAccessTokenRequest.UserId, validationResult.Error.Message);
+            logger.LogWarning("Refresh token validation failed: {Error}", validationResult.Error.Message);
             return HandleFailure(validationResult);
         }
 
-        Result<string> newTokenResult = await authService.GenerateNewJwtToken(refreshAccessTokenRequest.UserId);
+        Result<string> newTokenResult = await tokenService.GenerateNewJwtToken(validationResult.Value.UserId);
 
         if (newTokenResult.IsFailure)
         {
-            logger.LogWarning("Failed to generate new access token for user {UserId}: {Error}", refreshAccessTokenRequest.UserId, newTokenResult.Error.Message);
+            logger.LogWarning("Failed to generate new access token for user {UserId}: {Error}", validationResult.Value.UserId, newTokenResult.Error.Message);
             return HandleFailure(newTokenResult);
         }
         var accessTokenCookieOptions = authCookieWriter.BuildAccessTokenCookieOptions();

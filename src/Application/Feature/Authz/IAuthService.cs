@@ -4,8 +4,7 @@ namespace Application.Feature.Authz;
 
 public interface IAuthService
 {
-    Task<Result<AuthResponse>> LoginAsync(User UserLogin);
-    Task<Result<string>> GenerateNewJwtToken(Guid UserId);
+    Task<Result<AuthResponse>> LoginAsync(User UserLogin);    
     Task<Result> LogoutAsync(Guid UserId, string RToken);
 }
 

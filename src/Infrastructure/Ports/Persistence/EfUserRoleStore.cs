@@ -39,6 +39,14 @@ public sealed class EfUserRoleStore(TokenForgeContext dbContext) : IUserRoleStor
             .Select(x => x.User!)
             .ToListAsync(ct);
     }
+    public Task<List<string>> GetActiveRoleNamesByUserIdAsync(Guid userId, CancellationToken ct = default) 
+    {
+        return dbContext.UserRoles
+          .Where(ur => ur.UserId == userId && ur.IsActive && ur.Role!.IsActive)
+          .Select(ur => ur.Role!.RoleName)
+          .Distinct()
+          .ToListAsync(ct);
+    }
 
     public Task AddAsync(UserRole userRole, CancellationToken ct = default)
     {

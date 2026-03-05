@@ -7,7 +7,6 @@ public interface IAuthStore
     void UpdateLoginAttempt(LoginAttempt attempt);
 
     Task<RefreshToken?> GetValidRefreshTokenAsync(
-        Guid userId,
         string token,
         DateTime nowUtc,
         CancellationToken ct = default);

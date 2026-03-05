@@ -1,30 +1,35 @@
-/*
- *TokenService issues refresh tokens as high-entropy, cryptographically random
- * values for OAuth 2.0 session renewal.
- * RFC 6749 1.5: https://datatracker.ietf.org/doc/html/rfc6749#section-1.5
- * RFC 6819 5.1.4.2.2: https://datatracker.ietf.org/doc/html/rfc6819#section-5.1.4.2.2
- */
 using Application.Abstractions.Common;
-using Application.Feature.TokenFeature.RefreshTokenDto;
+using Application.Abstractions.Security;
+using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
+using System.Text;
 
 namespace Application.Feature.TokenFeature;
 
+// Refresh token security references:
+// RFC 6749 §1.5 (refresh token concept)
+// https://datatracker.ietf.org/doc/html/rfc6749#section-1.5
+// RFC 6819 §5.1.4.2.2 (high-entropy token generation)
+// https://datatracker.ietf.org/doc/html/rfc6819#section-5.1.4.2.2
+// RFC 6819 §5.2.2.3 and §5.2.2.4 (rotation/revocation)
+// https://datatracker.ietf.org/doc/html/rfc6819#section-5.2.2.3
+// https://datatracker.ietf.org/doc/html/rfc6819#section-5.2.2.4
+// RFC 6819 §5.1.4.1.3 (avoid cleartext token material at rest)
+// https://datatracker.ietf.org/doc/html/rfc6819#section-5.1.4.1.3
 public class TokenService(
     IAuthStore authStore,
+    IUserStore userStore,
+    IUserRoleStore userRoleStore,
+    IJwtProvider jwtProvider,
     IClock clock,
+    IConfiguration configuration,
     ILogger<TokenService> logger) : ITokenService
 {
     //Corregir esto no debe ir aqui, se debe configurar desde el appsettings o similar  
     private static readonly TimeSpan RefreshTokenLifetime = TimeSpan.FromDays(30);
-
-
-    /*
-     *https://datatracker.ietf.org/doc/html/rfc6819#section-5.1.4.2.2 
-     *Refresh tokens are generated with cryptographically secure randomness
-     *(RFC 6819 5.1.4.2.2) and used as OAuth 2.0 refresh credentials
-     *(RFC 6749 1.5).
-    */
+    private readonly string _refreshTokenHashKey = configuration["RefreshTokenSecurity:HashKey"]
+        ?? throw new InvalidOperationException("RefreshTokenSecurity:HashKey not found.");
+    
     /*
      * IDE:CA1872
      * https://learn.microsoft.com/es-es/dotnet/fundamentals/code-analysis/quality-rules/ca1872
@@ -37,136 +42,123 @@ public class TokenService(
         return Convert.ToHexString(randomNumber);
     }
 
-    public async Task<Result> ValidateRefreshToken(RefreshAccessTokenRequest request)
+    // Store and query refresh tokens as HMAC-SHA256 hash instead of cleartext.
+    private string HashRefreshToken(string refreshToken)
     {
-        try
-        {
-            var refreshToken = await authStore.GetValidRefreshTokenAsync(
-                request.UserId,
-                request.RefreshToken,
-                clock.UtcNow);
+        var keyBytes = Encoding.UTF8.GetBytes(_refreshTokenHashKey);
+        var tokenBytes = Encoding.UTF8.GetBytes(refreshToken);
+        using var hmac = new HMACSHA256(keyBytes);
+        var hash = hmac.ComputeHash(tokenBytes);
+        return Convert.ToHexString(hash);
+    }
 
-            if (refreshToken == null)
-            {
-                return Result.Failure(AuthErrors.InvalidRefreshToken);
-            }
+    public async Task<Result<RefreshToken>> ValidateRefreshToken(string refreshToken)
+    {
+        var tokenHash = HashRefreshToken(refreshToken);
+        var refreshT = await authStore.GetValidRefreshTokenAsync(tokenHash, clock.UtcNow);
 
-            return Result.Success();
-        }
-        catch (Exception ex)
+        if (refreshT is null)
         {
-            logger.LogError(ex, "Error validating refresh token for user {UserId}", request.UserId);
-            return Result.Failure(new Error("Token.ValidationFailed", "An error occurred while validating the refresh token."));
+            return Result<RefreshToken>.Failure(AuthErrors.InvalidRefreshToken);
         }
+
+        return Result<RefreshToken>.Success(refreshT);
+    }
+    public async Task<Result<string>> GenerateNewJwtToken(Guid userId)
+    {
+        var user = await userStore.GetByIdAsync(userId);
+        if (user is null || !user.IsActive)
+            return AuthErrors.UserNotFound;
+
+        var roleNames = await userRoleStore.GetActiveRoleNamesByUserIdAsync(user.UsersId);
+        if (roleNames.Count == 0)
+            return AuthErrors.Unauthorized;
+
+        var newAccessToken = jwtProvider.CreateAccessToken(
+            user.UsersId,
+            user.Email,
+            roleNames);
+
+        return Result<string>.Success(newAccessToken);
     }
 
     public async Task<Result> RevokeRefreshTokens(Guid userId, string newToken)
     {
-        try
+        var newTokenHash = HashRefreshToken(newToken);
+        var now = clock.UtcNow;
+        var tokens = await authStore.GetActiveRefreshTokensAsync(userId, now);
+
+        if (tokens.Count != 0)
         {
-            var now = clock.UtcNow;
-            var tokens = await authStore.GetActiveRefreshTokensAsync(userId, now);
-
-            if (tokens.Count != 0)
+            foreach (var refreshToken in tokens)
             {
-                foreach (var refreshToken in tokens)
-                {
-                    refreshToken.RevokedAt = now;
-                    refreshToken.ReplacedByToken = newToken;
-                }
-
-                authStore.UpdateRefreshTokens(tokens);
-                await authStore.SaveChangesAsync();
+                refreshToken.RevokedAt = now;
+                refreshToken.ReplacedByToken = newTokenHash;
             }
 
-            return Result.Success();
+            authStore.UpdateRefreshTokens(tokens);
+            await authStore.SaveChangesAsync();
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error revoking refresh tokens for user {UserId}", userId);
-            return Result.Failure(new Error("Token.RevokeFailed", "An error occurred while revoking refresh tokens."));
-        }
+
+        return Result.Success();
     }
 
     public async Task<Result> RevokeAllUserTokens(Guid userId)
     {
-        try
+        var now = clock.UtcNow;
+        var tokens = await authStore.GetActiveRefreshTokensAsync(userId, now);
+
+        if (tokens.Count != 0)
         {
-            var now = clock.UtcNow;
-            var tokens = await authStore.GetActiveRefreshTokensAsync(userId, now);
-
-            if (tokens.Count != 0)
+            foreach (var token in tokens)
             {
-                foreach (var token in tokens)
-                {
-                    token.RevokedAt = now;
-                }
-
-                authStore.UpdateRefreshTokens(tokens);
-                await authStore.SaveChangesAsync();
+                token.RevokedAt = now;
             }
 
-            return Result.Success();
+            authStore.UpdateRefreshTokens(tokens);
+            await authStore.SaveChangesAsync();
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error revoking all user tokens for user {UserId}", userId);
-            return Result.Failure(new Error("Token.RevokeAllFailed", "An error occurred while revoking all user tokens."));
-        }
+
+        return Result.Success();
     }
 
     public async Task<Result<string>> CreateTokenAsync(Guid userId)
     {
-        try
+        var now = clock.UtcNow;
+        var newToken = GenerateRefreshToken();
+        var revokeResult = await RevokeRefreshTokens(userId, newToken);
+        if (revokeResult.IsFailure)
         {
-            var now = clock.UtcNow;
-            var newToken = GenerateRefreshToken();
-            var revokeResult = await RevokeRefreshTokens(userId, newToken);
-            if (revokeResult.IsFailure)
-            {
-                return revokeResult.Error;
-            }
-
-            var refreshToken = new RefreshToken
-            {
-                UserId = userId,
-                Token = newToken,
-                CreatedAt = now,
-                ExpiresAt = now.Add(RefreshTokenLifetime)
-            };
-
-            await authStore.AddRefreshTokenAsync(refreshToken);
-            await authStore.SaveChangesAsync();
-            return Result<string>.Success(newToken);
+            return revokeResult.Error;
         }
-        catch (Exception ex)
+
+        var refreshToken = new RefreshToken
         {
-            logger.LogError(ex, "Error creating new token for user {UserId}", userId);
-            return new Error("Token.CreationFailed", "An error occurred while creating a new token.");
-        }
+            UserId = userId,
+            Token = HashRefreshToken(newToken),
+            CreatedAt = now,
+            ExpiresAt = now.Add(RefreshTokenLifetime)
+        };
+
+        await authStore.AddRefreshTokenAsync(refreshToken);
+        await authStore.SaveChangesAsync();
+        return Result<string>.Success(newToken);       
     }
 
     public async Task<Result> RevokeCurrentSession(Guid userId, string refreshToken)
     {
-        try
+        var tokenHash = HashRefreshToken(refreshToken);
+        var token = await authStore.GetActiveRefreshTokenByValueAsync(userId, tokenHash);
+        if (token is null)
         {
-            var token = await authStore.GetActiveRefreshTokenByValueAsync(userId, refreshToken);
-            if (token is null)
-            {
-                return Result.Failure(AuthErrors.InvalidRefreshToken);
-            }
-
-            token.RevokedAt = clock.UtcNow;
-            token.ReplacedByToken = null;
-
-            authStore.UpdateRefreshToken(token);
-            await authStore.SaveChangesAsync();
-            return Result.Success();
+            return Result.Failure(AuthErrors.InvalidRefreshToken);
         }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error revoking current session for user {UserId}", userId);
-            return Result.Failure(new Error("Token.RevokeSessionFailed", "An error occurred while revoking the current session."));
-        }
+
+        token.RevokedAt = clock.UtcNow;
+        token.ReplacedByToken = null;
+
+        authStore.UpdateRefreshToken(token);
+        await authStore.SaveChangesAsync();
+        return Result.Success();
     }
 }

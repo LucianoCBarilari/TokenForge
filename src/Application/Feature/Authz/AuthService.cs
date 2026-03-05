@@ -29,7 +29,7 @@ public class AuthService(
             return AuthErrors.InvalidCredentials;
         }
 
-        var roleNames = await GetActiveRoleNamesAsync(currentUser.UsersId);
+        var roleNames = await userRoleStore.GetActiveRoleNamesByUserIdAsync(currentUser.UsersId);
         if (roleNames.Count == 0)
             return AuthErrors.Unauthorized;
 
@@ -61,25 +61,6 @@ public class AuthService(
             currentUser.UserAccount,
             roleNames));
     }
-
-    public async Task<Result<string>> GenerateNewJwtToken(Guid userId)
-    {
-        var user = await userStore.GetByIdAsync(userId);
-        if (user is null || !user.IsActive)
-            return AuthErrors.UserNotFound;
-
-        var roleNames = await GetActiveRoleNamesAsync(user.UsersId);
-        if (roleNames.Count == 0)
-            return AuthErrors.Unauthorized;
-
-        var newAccessToken = jwtProvider.CreateAccessToken(
-            user.UsersId,
-            user.Email,
-            roleNames);
-
-        return Result<string>.Success(newAccessToken);
-    }
-
     public async Task<Result> LogoutAsync(Guid userId, string refreshToken)
     {
         var result = await tokenService.RevokeCurrentSession(userId, refreshToken);
@@ -88,16 +69,4 @@ public class AuthService(
 
         return Result.Success();
     }
-
-    private async Task<List<string>> GetActiveRoleNamesAsync(Guid userId)
-    {
-        var assignments = await userRoleStore.GetActiveByUserIdAsync(userId);
-
-        return assignments
-            .Where(x => x.Role is not null && x.Role.IsActive)
-            .Select(x => x.Role!.RoleName)
-            .Distinct()
-            .ToList();
-    }
-
 }

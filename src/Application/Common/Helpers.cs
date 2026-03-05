@@ -4,19 +4,7 @@ namespace Application.Common;
 
 public class Helpers
 {
-    /// <summary>
-    /// Gets the current UTC time from the server.
-    /// </summary>
-    public virtual DateTime GetServerTimeUtc()
-    {
-        return DateTime.UtcNow;
-    }
-
-    /// <summary>
-    /// Validates whether the provided email address is in a correct format.
-    /// </summary>
-    /// <param name="Email">The email address to validate.</param>
-    /// <returns>True if the email is valid; otherwise, false.</returns>
+  
     public bool EmailValidator(string Email)
     {
         string Pattern = @"^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$";

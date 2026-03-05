@@ -48,7 +48,6 @@ public class UserRoleService(
         await userRoleStore.SaveChangesAsync();
         return Result.Success();
     }
-
     public async Task<Result<UserRoleResponse>> GetUserRoleByIdAsync(Guid userRoleId)
     {
         var userRole = await userRoleStore.GetByIdAsync(userRoleId);
@@ -57,7 +56,6 @@ public class UserRoleService(
 
         return Result<UserRoleResponse>.Success(mapper.ToResponse(userRole));
     }
-
     public async Task<Result> RevokeRole(UserRoleRevokeInputDto input)
     {
         var assignment = await userRoleStore.GetAsync(input.UserId, input.RoleId);
@@ -72,13 +70,11 @@ public class UserRoleService(
         await userRoleStore.SaveChangesAsync();
         return Result.Success();
     }
-
     public async Task<Result<List<UserRoleResponse>>> GetRolesByUserIdAsync(Guid userId)
     {
         var userRoles = await userRoleStore.GetActiveByUserIdAsync(userId);
         return Result<List<UserRoleResponse>>.Success(mapper.ToResponseList(userRoles));
     }
-
     public async Task<Result<List<UserResponse>>> GetAllUsersFromRole(Guid roleId)
     {
         var role = await roleStore.GetByIdAsync(roleId);
@@ -87,5 +83,11 @@ public class UserRoleService(
 
         var users = await userRoleStore.GetActiveUsersByRoleIdAsync(roleId);
         return Result<List<UserResponse>>.Success(userMapper.ToResponseList(users));
+    }
+    public async Task<Result<List<string>>> GetActiveRoleNamesAsync(Guid userId, CancellationToken ct = default)
+    {
+        var roleNames = await userRoleStore.GetActiveRoleNamesByUserIdAsync(userId, ct);
+
+        return Result<List<string>>.Success(roleNames);
     }
 }
