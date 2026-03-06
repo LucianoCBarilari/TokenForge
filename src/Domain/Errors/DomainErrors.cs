@@ -50,4 +50,17 @@ public record UserRoleErrors
     public static readonly Error UserRoleNotFound = new("UserRole.AssignmentNotFound", "The specified user-role assignment was not found.");
     public static readonly Error OperationFailed = new("UserRole.OperationFailed", "The user-role operation could not be completed.");
 }
+public record PermissionErrors
+{
+    public static readonly Error PermissionNotFound = new("Permission.NotFound", "The specified permission was not found.");
+    public static readonly Error PermissionAlreadyExists = new("Permission.AlreadyExists", "A permission with the same code already exists.");
+    public static readonly Error InvalidPermissionCode = new("Permission.InvalidCode", "Permission code is required.");
+}
+public record RolePermissionErrors
+{
+    public static readonly Error RoleNotFound = new("RolePermission.RoleNotFound", "The specified role was not found.");
+    public static readonly Error PermissionNotFound = new("RolePermission.PermissionNotFound", "The specified permission was not found.");
+    public static readonly Error RolePermissionAlreadyExists = new("RolePermission.AlreadyExists", "The role already has this active permission.");
+    public static readonly Error RolePermissionNotFound = new("RolePermission.NotFound", "The specified role-permission assignment was not found.");
+}
 

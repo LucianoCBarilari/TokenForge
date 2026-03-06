@@ -1,4 +1,5 @@
 using Domain.Entities;
+using Infrastructure.DataAccess.Seeds;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.DataAccess;
@@ -10,6 +11,8 @@ public class TokenForgeContext(DbContextOptions<TokenForgeContext> options) : Db
     public virtual DbSet<UserRole> UserRoles { get; set; }
     public virtual DbSet<RefreshToken> RefreshTokens { get; set; }
     public virtual DbSet<LoginAttempt> LoginAttempts { get; set; }
+    public virtual DbSet<Permission> Permissions { get; set; }
+    public virtual DbSet<RolePermission> RolePermissions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -90,6 +93,42 @@ public class TokenForgeContext(DbContextOptions<TokenForgeContext> options) : Db
                   .HasForeignKey(la => la.UserId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
+
+        modelBuilder.Entity<Permission>(entity =>
+        {
+            entity.HasKey(p => p.PermissionId);
+            entity.HasIndex(p => p.PermissionCode).IsUnique();
+            entity.Property(p => p.PermissionCode).IsRequired().HasMaxLength(100);
+            entity.Property(p => p.PermissionName).IsRequired().HasMaxLength(100);
+            entity.Property(p => p.PermissionDescription).HasMaxLength(256);
+            entity.Property(p => p.IsActive).IsRequired();
+            entity.Property(p => p.CreatedAt).IsRequired();
+            entity.Property(p => p.RevokedAt);
+
+        });
+        modelBuilder.Entity<RolePermission>(entity =>
+        {
+            entity.HasKey(rp => rp.RolePermissionId);
+            entity.HasIndex(rp => new { rp.RoleId, rp.PermissionId }).IsUnique();
+            entity.Property(rp => rp.AssignedAt).IsRequired();
+            entity.Property(rp => rp.IsActive).IsRequired();
+            entity.Property(rp => rp.DeactivatedAt);
+            entity.Property(rp => rp.DeactivatedReason).HasMaxLength(256);
+
+            entity.HasOne(rp => rp.Role)
+                  .WithMany(r => r.RolePermissions)
+                  .HasForeignKey(rp => rp.RoleId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(rp => rp.Permission)
+                  .WithMany(p => p.RolePermissions)
+                  .HasForeignKey(rp => rp.PermissionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        RoleSeed.Configure(modelBuilder);
+        PermissionSeed.Configure(modelBuilder);
+        RolePermissionSeed.Configure(modelBuilder);
+
         base.OnModelCreating(modelBuilder);
     }
 }

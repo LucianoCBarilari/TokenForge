@@ -9,5 +9,6 @@ public class Role
     public DateTime CreatedAt { get; set; }
     public DateTime? RevokedAt { get; set; }
     public ICollection<UserRole>? UserRoles { get; set; }
+    public ICollection<RolePermission>? RolePermissions { get; set; }
 }
 
