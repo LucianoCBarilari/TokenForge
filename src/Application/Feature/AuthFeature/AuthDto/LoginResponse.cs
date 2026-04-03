@@ -6,7 +6,6 @@ public sealed class LoginResponse
     public string TokenType { get; set; } = "Bearer";
     public Guid UserId { get; set; }
     public string UserAccount { get; set; } = string.Empty;
-    public List<string> Roles { get; set; } = [];
 
     public static LoginResponse FromAuth(AuthResponse auth) =>
         new()
@@ -14,7 +13,6 @@ public sealed class LoginResponse
             AccessToken = auth.AccessToken,
             TokenType = auth.TokenType,
             UserId = auth.UserId,
-            UserAccount = auth.UserAccount,
-            Roles = auth.Roles
+            UserAccount = auth.UserAccount
         };
 }

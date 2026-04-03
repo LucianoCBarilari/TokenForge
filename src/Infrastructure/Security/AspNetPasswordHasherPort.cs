@@ -2,9 +2,9 @@ using Application.Abstractions.Security;
 using Domain.Entities;
 using Microsoft.AspNetCore.Identity;
 
-namespace Infrastructure.Ports.Security;
+namespace Infrastructure.Security;
 
-public sealed class AspNetPasswordHasherPort : IPasswordHasherPort
+public class AspNetPasswordHasherPort : IPasswordHasherPort
 {
     private readonly PasswordHasher<User> _passwordHasher = new();
 

@@ -5,7 +5,7 @@ using Infrastructure.DataAccess;
 using Infrastructure.DataAccess.Seeds;
 using Infrastructure.Ports.Common;
 using Infrastructure.Ports.Persistence;
-using Infrastructure.Ports.Security;
+using Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -27,6 +27,7 @@ public static class DependencyInjection
         builder.Services.AddScoped<IUserRoleStore, EfUserRoleStore>();
         builder.Services.AddScoped<IPermissionStore, EfPermissionStore>();
         builder.Services.AddScoped<IRolePermissionStore, EfRolePermissionStore>();
+        builder.Services.AddScoped<ITransactionalUnitOfWork, EfTransactionalUnitOfWorkEfRoleStore>();
         builder.Services.AddScoped<IAuthStore, EfAuthStore>();
         builder.Services.AddScoped<IPasswordHasherPort, AspNetPasswordHasherPort>();
         builder.Services.AddScoped<IJwtProvider, JwtProvider>();

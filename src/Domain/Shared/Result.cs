@@ -25,7 +25,7 @@ public class Result
     public static implicit operator Result(Error error) => Failure(error);
 }
 
-public sealed class Result<T> : Result
+public class Result<T> : Result
 {
     private readonly T? _value;
 

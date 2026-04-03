@@ -6,7 +6,7 @@ using Application.Feature.TokenFeature;
 using Domain.Entities;
 using Domain.Errors;
 using Domain.Shared;
-using Infrastructure.Ports.Security;
+using Infrastructure.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -63,7 +63,6 @@ public class AuthController(
         {
             userId = successfulAuth.UserId,
             userAccount = successfulAuth.UserAccount,
-            roles = successfulAuth.Roles,
             tokenType = successfulAuth.TokenType,
             message = "Login successful."
         });

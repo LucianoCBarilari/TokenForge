@@ -2,9 +2,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
-namespace Infrastructure.Ports.Security;
+namespace Infrastructure.Security;
 
-public sealed class JwtValidationParametersProvider(IConfiguration configuration) : IJwtValidationParametersProvider
+public class JwtValidationParametersProvider(IConfiguration configuration) : IJwtValidationParametersProvider
 {
     public TokenValidationParameters GetValidationParameters()
     {

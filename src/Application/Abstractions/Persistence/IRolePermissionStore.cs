@@ -5,6 +5,7 @@ public interface IRolePermissionStore
     Task<RolePermission?> GetAsync(Guid roleId, Guid permissionId, CancellationToken ct = default);
     Task<List<RolePermission>> GetActiveByRoleIdAsync(Guid roleId, CancellationToken ct = default);
     Task<List<RolePermission>> GetActiveByPermissionIdAsync(Guid permissionId, CancellationToken ct = default);
+    Task<List<string>> GetActivePermissionCodesByRoleIdsAsync(List<Guid> roleIds, CancellationToken ct = default);
     Task<List<Guid>> GetActivePermissionIdsByRoleIdAsync(Guid roleId, CancellationToken ct = default);
     Task AddAsync(RolePermission rolePermission, CancellationToken ct = default);
     Task AddRangeAsync(IEnumerable<RolePermission> rolePermissions, CancellationToken ct = default);

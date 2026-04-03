@@ -5,17 +5,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Ports.Persistence;
 
-public sealed class EfRolePermissionStore(TokenForgeContext dbContext) : IRolePermissionStore
+public class EfRolePermissionStore(TokenForgeContext dbContext) : IRolePermissionStore
 {
-    public Task<RolePermission?> GetAsync(Guid roleId, Guid permissionId, CancellationToken ct = default)
+    public async Task<RolePermission?> GetAsync(Guid roleId, Guid permissionId, CancellationToken ct = default)
     {
-        return dbContext.RolePermissions
+        return await dbContext.RolePermissions
             .FirstOrDefaultAsync(rp => rp.RoleId == roleId && rp.PermissionId == permissionId, ct);
     }
 
-    public Task<List<RolePermission>> GetActiveByRoleIdAsync(Guid roleId, CancellationToken ct = default)
+    public async Task<List<RolePermission>> GetActiveByRoleIdAsync(Guid roleId, CancellationToken ct = default)
     {
-        return dbContext.RolePermissions
+        return await dbContext.RolePermissions
             .AsNoTracking()
             .Include(rp => rp.Role)
             .Include(rp => rp.Permission)
@@ -23,9 +23,9 @@ public sealed class EfRolePermissionStore(TokenForgeContext dbContext) : IRolePe
             .ToListAsync(ct);
     }
 
-    public Task<List<RolePermission>> GetActiveByPermissionIdAsync(Guid permissionId, CancellationToken ct = default)
+    public async Task<List<RolePermission>> GetActiveByPermissionIdAsync(Guid permissionId, CancellationToken ct = default)
     {
-        return dbContext.RolePermissions
+        return await dbContext.RolePermissions
             .AsNoTracking()
             .Include(rp => rp.Role)
             .Include(rp => rp.Permission)
@@ -33,36 +33,49 @@ public sealed class EfRolePermissionStore(TokenForgeContext dbContext) : IRolePe
             .ToListAsync(ct);
     }
 
-    public Task<List<Guid>> GetActivePermissionIdsByRoleIdAsync(Guid roleId, CancellationToken ct = default)
+    public async Task<List<Guid>> GetActivePermissionIdsByRoleIdAsync(Guid roleId, CancellationToken ct = default)
     {
-        return dbContext.RolePermissions
+        return await dbContext.RolePermissions
             .AsNoTracking()
             .Where(rp => rp.RoleId == roleId && rp.IsActive)
             .Select(rp => rp.PermissionId)
             .Distinct()
             .ToListAsync(ct);
     }
-
-    public Task AddAsync(RolePermission rolePermission, CancellationToken ct = default)
+    public async Task<List<string>> GetActivePermissionCodesByRoleIdsAsync(
+        List<Guid> roleIds,
+        CancellationToken ct = default)
     {
-        return dbContext.RolePermissions.AddAsync(rolePermission, ct).AsTask();
+        if (roleIds.Count ==0)
+            return new List<string>();
+        
+        return await dbContext.RolePermissions
+                .AsNoTracking()
+                .Include(rp => rp.Permission)
+                .Where(rp => roleIds.Contains(rp.RoleId) && rp.IsActive)
+                .Select(rp => rp.Permission.PermissionCode)
+                .Distinct()
+                .ToListAsync(ct);
     }
 
-    public Task AddRangeAsync(IEnumerable<RolePermission> rolePermissions, CancellationToken ct = default)
+    public async Task AddAsync(RolePermission rolePermission, CancellationToken ct = default)
     {
-        return dbContext.RolePermissions.AddRangeAsync(rolePermissions, ct);
+        await dbContext.RolePermissions.AddAsync(rolePermission, ct);
+    }
+
+    public async Task AddRangeAsync(IEnumerable<RolePermission> rolePermissions, CancellationToken ct = default)
+    {
+        await dbContext.RolePermissions.AddRangeAsync(rolePermissions, ct);
     }
 
     public void Update(RolePermission rolePermission)
     {
         dbContext.RolePermissions.Update(rolePermission);
     }
-
     public void UpdateRange(IEnumerable<RolePermission> rolePermissions)
     {
         dbContext.RolePermissions.UpdateRange(rolePermissions);
     }
-
     public Task SaveChangesAsync(CancellationToken ct = default)
     {
         return dbContext.SaveChangesAsync(ct);

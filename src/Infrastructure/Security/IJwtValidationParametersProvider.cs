@@ -1,6 +1,6 @@
 using Microsoft.IdentityModel.Tokens;
 
-namespace Infrastructure.Ports.Security;
+namespace Infrastructure.Security;
 
 public interface IJwtValidationParametersProvider
 {

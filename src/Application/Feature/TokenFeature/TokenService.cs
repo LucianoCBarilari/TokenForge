@@ -19,6 +19,7 @@ namespace Application.Feature.TokenFeature;
 public class TokenService(
     IUserStore userStore,
     IUserRoleStore userRoleStore,
+    IRolePermissionStore rolePermissionStore,
     IJwtProvider jwtProvider,
     IConfiguration configuration) : ITokenService
 {
@@ -58,16 +59,22 @@ public class TokenService(
         User? user = await userStore.GetByIdAsync(userId);
         
         if (user is null || !user.IsActive)
-            return AuthErrors.UserNotFound;
+            return AuthErrors.UserNotFound;       
+
+        /*Role And Permission Claims*/
+        List<Guid> roleIds = await userRoleStore.GetActiveRoleIdsByUserIdAsync(user.UsersId);
+        if (roleIds.Count == 0)
+            return AuthErrors.Unauthorized;
+
+        var permissionsCodes = await rolePermissionStore.GetActivePermissionCodesByRoleIdsAsync(roleIds);
 
         var roleNames = await userRoleStore.GetActiveRoleNamesByUserIdAsync(user.UsersId);
-        if (roleNames.Count == 0)
-            return AuthErrors.Unauthorized;
 
         var newAccessToken = jwtProvider.CreateAccessToken(
             user.UsersId,
             user.Email,
-            roleNames);
+            roleNames,
+            permissionsCodes);
 
         return Result<string>.Success(newAccessToken);
     }     
