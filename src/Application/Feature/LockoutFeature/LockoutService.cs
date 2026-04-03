@@ -39,10 +39,14 @@ public class LockoutService(
     {
         var currentUser = await userStore.GetByAccountAsync(userAccount);
         var loginAttempt = await authStore.GetLoginAttemptAsync(userAccount);
-
+        
         if (loginAttempt is null)
-            return Result<LoginAttemptResponse>.Failure(new Error("Lockout.NotFound", "No login attempt record found for this user"));
-
+        {
+            return Result<LoginAttemptResponse>.Success(new LoginAttemptResponse
+            {
+                Succeeded = true
+            });
+        }
         loginAttempt.FailedAttempts = 0;
         loginAttempt.LockedUntil = null;
         loginAttempt.LastAttemptAt = clock.UtcNow;

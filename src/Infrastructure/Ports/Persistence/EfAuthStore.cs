@@ -5,17 +5,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Ports.Persistence;
 
-public sealed class EfAuthStore(TokenForgeContext dbContext) : IAuthStore
+public class EfAuthStore(TokenForgeContext dbContext) : IAuthStore
 {
-    public Task<LoginAttempt?> GetLoginAttemptAsync(string userAccount, CancellationToken ct = default)
+    public async Task<LoginAttempt?> GetLoginAttemptAsync(string userAccount, CancellationToken ct = default)
     {
-        return dbContext.LoginAttempts
+        return await dbContext.LoginAttempts
             .FirstOrDefaultAsync(x => x.UserAttempt == userAccount, ct);
     }
 
-    public Task AddLoginAttemptAsync(LoginAttempt attempt, CancellationToken ct = default)
+    public async Task AddLoginAttemptAsync(LoginAttempt attempt, CancellationToken ct = default)
     {
-        return dbContext.LoginAttempts.AddAsync(attempt, ct).AsTask();
+        await dbContext.LoginAttempts.AddAsync(attempt, ct);
     }
 
     public void UpdateLoginAttempt(LoginAttempt attempt)
@@ -23,44 +23,44 @@ public sealed class EfAuthStore(TokenForgeContext dbContext) : IAuthStore
         dbContext.LoginAttempts.Update(attempt);
     }
 
-    public Task<RefreshToken?> GetValidRefreshTokenAsync(        
+    public async Task<RefreshToken?> GetValidRefreshTokenAsync(        
         string token,
         DateTime nowUtc,
         CancellationToken ct = default)
     {
-        return dbContext.RefreshTokens
+        return await dbContext.RefreshTokens
             .FirstOrDefaultAsync(x => 
                         x.Token == token &&
                         x.ExpiresAt > nowUtc &&
                         x.RevokedAt == null,ct);
     }
 
-    public Task<List<RefreshToken>> GetActiveRefreshTokensAsync(
+    public async Task<List<RefreshToken>> GetActiveRefreshTokensAsync(
         Guid userId,
         DateTime nowUtc,
         CancellationToken ct = default)
     {
-        return dbContext.RefreshTokens
+        return await dbContext.RefreshTokens
             .Where(x => x.UserId == userId &&
                         x.ExpiresAt > nowUtc &&
                         x.RevokedAt == null)
             .ToListAsync(ct);
     }
 
-    public Task<RefreshToken?> GetActiveRefreshTokenByValueAsync(
+    public async Task<RefreshToken?> GetActiveRefreshTokenByValueAsync(
         Guid userId,
         string token,
         CancellationToken ct = default)
     {
-        return dbContext.RefreshTokens
+        return await dbContext.RefreshTokens
             .FirstOrDefaultAsync(x => x.UserId == userId &&
                                       x.Token == token &&
                                       x.RevokedAt == null, ct);
     }
 
-    public Task AddRefreshTokenAsync(RefreshToken token, CancellationToken ct = default)
+    public async Task AddRefreshTokenAsync(RefreshToken token, CancellationToken ct = default)
     {
-        return dbContext.RefreshTokens.AddAsync(token, ct).AsTask();
+        await dbContext.RefreshTokens.AddAsync(token, ct).AsTask();
     }
 
     public void UpdateRefreshToken(RefreshToken token)
@@ -72,9 +72,9 @@ public sealed class EfAuthStore(TokenForgeContext dbContext) : IAuthStore
     {
         dbContext.RefreshTokens.UpdateRange(tokens);
     }
-    public Task<RefreshToken?> FindByIdAndTokenAsync(Guid userId, string tokenHash, CancellationToken ct = default)
+    public async  Task<RefreshToken?> FindByIdAndTokenAsync(Guid userId, string tokenHash, CancellationToken ct = default)
     {
-        return dbContext.RefreshTokens
+        return await dbContext.RefreshTokens
             .FirstOrDefaultAsync(
                 rt => rt.UserId == userId && rt.Token == tokenHash,
                 ct);

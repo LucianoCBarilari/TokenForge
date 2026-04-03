@@ -1,3 +1,4 @@
+using Application.Constants;
 using Application.Feature.RoleFeature;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,6 +14,7 @@ public class RoleController(
     ) : ApiControllerBase
 {
 
+    [Authorize(Policy = PermissionCodes.RolesRead)]
     [HttpGet]
     public async Task<IActionResult> GetAllRoles()
     {
@@ -29,6 +31,7 @@ public class RoleController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.RolesRead)]
     [HttpGet("{roleId:guid}")]
     public async Task<IActionResult> GetRoleById(Guid roleId)
     {
@@ -44,6 +47,7 @@ public class RoleController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.RolesUpdate)]
     [HttpPut("{roleId:guid}")]
     public async Task<IActionResult> UpdateRole(Guid roleId, [FromBody] RoleInputDto updateRoleRequest)
     {

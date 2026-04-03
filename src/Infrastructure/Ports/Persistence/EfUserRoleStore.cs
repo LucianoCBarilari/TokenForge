@@ -5,52 +5,64 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Ports.Persistence;
 
-public sealed class EfUserRoleStore(TokenForgeContext dbContext) : IUserRoleStore
+public class EfUserRoleStore(TokenForgeContext dbContext) : IUserRoleStore
 {
-    public Task<UserRole?> GetAsync(Guid userId, Guid roleId, CancellationToken ct = default)
+    public async Task<UserRole?> GetAsync(Guid userId, Guid roleId, CancellationToken ct = default)
     {
-        return dbContext.UserRoles
+        return await dbContext.UserRoles
             .FirstOrDefaultAsync(x => x.UserId == userId && x.RoleId == roleId, ct);
     }
 
-    public Task<UserRole?> GetByIdAsync(Guid userRoleId, CancellationToken ct = default)
+    public async Task<UserRole?> GetByIdAsync(Guid userRoleId, CancellationToken ct = default)
     {
-        return dbContext.UserRoles
+        return await dbContext.UserRoles
             .Include(x => x.User)
             .Include(x => x.Role)
             .FirstOrDefaultAsync(x => x.UserRoleId == userRoleId, ct);
     }
 
-    public Task<List<UserRole>> GetActiveByUserIdAsync(Guid userId, CancellationToken ct = default)
+    public async Task<List<UserRole>> GetActiveByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
-        return dbContext.UserRoles
+        return await dbContext.UserRoles
             .AsNoTracking()
             .Include(x => x.Role)
             .Where(x => x.UserId == userId && x.IsActive)
             .ToListAsync(ct);
     }
 
-    public Task<List<User>> GetActiveUsersByRoleIdAsync(Guid roleId, CancellationToken ct = default)
+    public async Task<List<User>> GetActiveUsersByRoleIdAsync(Guid roleId, CancellationToken ct = default)
     {
-        return dbContext.UserRoles
+        return await dbContext.UserRoles
             .AsNoTracking()
             .Where(x => x.RoleId == roleId && x.IsActive)
             .Include(x => x.User)
             .Select(x => x.User!)
             .ToListAsync(ct);
     }
-    public Task<List<string>> GetActiveRoleNamesByUserIdAsync(Guid userId, CancellationToken ct = default) 
+    public async Task<List<string>> GetActiveRoleNamesByUserIdAsync(Guid userId, CancellationToken ct = default) 
     {
-        return dbContext.UserRoles
+        return await dbContext.UserRoles
           .Where(ur => ur.UserId == userId && ur.IsActive && ur.Role!.IsActive)
           .Select(ur => ur.Role!.RoleName)
           .Distinct()
           .ToListAsync(ct);
     }
-
-    public Task AddAsync(UserRole userRole, CancellationToken ct = default)
+    public async Task<List<Guid>> GetActiveRoleIdsByUserIdAsync(Guid userId, CancellationToken ct = default)
     {
-        return dbContext.UserRoles.AddAsync(userRole, ct).AsTask();
+        return await  dbContext.UserRoles
+              .AsNoTracking()
+              .Include(ur => ur.Role)
+              .Where(ur => ur.UserId == userId 
+                        && ur.IsActive
+                        && ur.Role.IsActive)
+              .Select(ur => ur.Role.RolesId)
+              .Distinct()
+              .ToListAsync(ct);
+    }
+
+    public async Task AddAsync(UserRole userRole, CancellationToken ct = default)
+    {
+        await dbContext.UserRoles.AddAsync(userRole, ct);
     }
 
     public void Update(UserRole userRole)

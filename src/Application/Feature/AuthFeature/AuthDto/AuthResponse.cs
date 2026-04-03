@@ -7,14 +7,11 @@ public class AuthResponse
     public string TokenType { get; set; } = "Bearer";
     public Guid UserId { get; set; }
     public string UserAccount { get; set; } = string.Empty;
-    public List<string> Roles { get; set; } = [];
-
     public static AuthResponse Success(
         string accessToken,
         string refreshToken,
         Guid userId,
-        string userAccount,
-        List<string> roles)
+        string userAccount)
     {
         return new AuthResponse
         {
@@ -22,8 +19,7 @@ public class AuthResponse
             RefreshToken = refreshToken,
             TokenType = "Bearer",
             UserId = userId,
-            UserAccount = userAccount,
-            Roles = roles
+            UserAccount = userAccount          
         };
     }
 }

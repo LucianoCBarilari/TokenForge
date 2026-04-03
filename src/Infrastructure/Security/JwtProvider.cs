@@ -1,18 +1,20 @@
 using Application.Abstractions.Security;
+using Application.Constants;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace Infrastructure.Ports.Security;
+namespace Infrastructure.Security;
 
-public sealed class JwtProvider(IConfiguration configuration) : IJwtProvider
+public class JwtProvider(IConfiguration configuration) : IJwtProvider
 {
     public string CreateAccessToken(
         Guid userId,
         string email,
-        List<string> roles)
+        List<string> roles,
+        List<string> permissions)
     {
         string secret = configuration["JwtSettings:SecretKey"]
            ?? throw new InvalidOperationException("SecretKey not found.");
@@ -34,7 +36,11 @@ public sealed class JwtProvider(IConfiguration configuration) : IJwtProvider
         foreach (var role in roles)
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
-        }        
+        }
+        foreach (var perm in permissions) 
+        {
+            claims.Add(new Claim(CustomClaimTypes.Permission, perm));
+        }
 
         var descriptor = new SecurityTokenDescriptor
         {

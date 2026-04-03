@@ -7,6 +7,6 @@ public class UserRoleRevokeInputDto
     public string Reason { get; set; } = string.Empty;
 }
 
-public sealed class RevokeRoleRequest : UserRoleRevokeInputDto
+public class RevokeRoleRequest : UserRoleRevokeInputDto
 {
 }

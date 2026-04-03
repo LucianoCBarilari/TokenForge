@@ -84,6 +84,15 @@ public abstract class ApiControllerBase : ControllerBase
             var c when c == UserRoleErrors.ActiveAssignmentNotFound.Code => StatusCodes.Status404NotFound,
             var c when c == UserRoleErrors.UserRoleNotFound.Code => StatusCodes.Status404NotFound,
 
+            var c when c == PermissionErrors.PermissionNotFound.Code => StatusCodes.Status404NotFound,
+            var c when c == PermissionErrors.PermissionAlreadyExists.Code => StatusCodes.Status409Conflict,
+            var c when c == PermissionErrors.InvalidPermissionCode.Code => StatusCodes.Status400BadRequest,
+
+            var c when c == RolePermissionErrors.RoleNotFound.Code => StatusCodes.Status404NotFound,
+            var c when c == RolePermissionErrors.PermissionNotFound.Code => StatusCodes.Status404NotFound,
+            var c when c == RolePermissionErrors.RolePermissionAlreadyExists.Code => StatusCodes.Status409Conflict,
+            var c when c == RolePermissionErrors.RolePermissionNotFound.Code => StatusCodes.Status404NotFound,
+
             var c when c == Error.NullValue.Code => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status500InternalServerError
         };

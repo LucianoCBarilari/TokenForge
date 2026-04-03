@@ -5,22 +5,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Ports.Persistence;
 
-public sealed class EfRoleStore(TokenForgeContext dbContext) : IRoleStore
+public class EfRoleStore(TokenForgeContext dbContext) : IRoleStore
 {
-    public Task<Role?> GetByIdAsync(Guid roleId, CancellationToken ct = default)
+    public async Task<Role?> GetByIdAsync(Guid roleId, CancellationToken ct = default)
     {
-        return dbContext.Roles.FirstOrDefaultAsync(x => x.RolesId == roleId, ct);
+        return await dbContext.Roles.FirstOrDefaultAsync(x => x.RolesId == roleId, ct);
     }
 
-    public Task<List<Role>> GetAllAsync(CancellationToken ct = default)
+    public async Task<List<Role>> GetAllAsync(CancellationToken ct = default)
     {
-        return dbContext.Roles.AsNoTracking().ToListAsync(ct);
+        return await dbContext.Roles.AsNoTracking().ToListAsync(ct);
     }
 
-    public Task<List<Role>> GetByIdsAsync(IEnumerable<Guid> roleIds, CancellationToken ct = default)
+    public async Task<List<Role>> GetByIdsAsync(IEnumerable<Guid> roleIds, CancellationToken ct = default)
     {
         var ids = roleIds.Distinct().ToList();
-        return dbContext.Roles
+        return await dbContext.Roles
             .AsNoTracking()
             .Where(x => ids.Contains(x.RolesId))
             .ToListAsync(ct);

@@ -1,5 +1,6 @@
 using Application;
 using Infrastructure;
+using Infrastructure.DataAccess.Seeds;
 using Microsoft.AspNetCore.HttpOverrides;
 using Web;
 using Serilog;
@@ -19,6 +20,12 @@ try
     builder.AddApplicationServices();
 
     var app = builder.Build();
+
+    using (var scope = app.Services.CreateScope())
+    {
+        var bootstrapSeeder = scope.ServiceProvider.GetRequiredService<BootstrapAdminSeedRunner>();
+        await bootstrapSeeder.RunAsync();
+    }
 
     app.UseSerilogRequestLogging();
 

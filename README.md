@@ -8,10 +8,30 @@ JWT auth API built with ASP.NET Core (.NET 10), using Clean Architecture, refres
    - `JwtSettings`
    - `RefreshTokenSecurity:HashKey`
    - `AuthCookie`
-2. Run:
+2. Configure roles and permissions in `src/Infrastructure/DataAccess/Seeds` if you need to customize the authorization model.
+3. Create and apply a new migration after changing seeded roles or permissions.
+4. If you want to bootstrap an administrator account on startup, configure `BootstrapAdmin` in `src/Web/appsettings.json`, set `Enabled` to `true`, and provide the desired admin values and role.
+5. Run:
    - `dotnet restore`
    - `dotnet run --project src/Web/Web.csproj`
-3. Swagger (development): `https://localhost:<port>/swagger`
+6. Swagger (development): `https://localhost:<port>/swagger`
+
+## Authorization Model
+The API uses both roles and granular permissions.
+
+Rules used in this project:
+- Roles are used as high-level access groups: `Admin`, `Manager`, `User`
+- Permissions are used as granular claims in JWT tokens
+- `Admin` receives the full permission set
+- `Manager` receives the operational subset
+- `User` receives the minimal self-service subset
+
+## Configuration Notes
+- Keep permission codes stable even if routes change.
+- Prefer domain capability names like `users.update.email` instead of route names.
+- For frontend authorization, derive simple UI capabilities from these permissions instead of checking every permission directly in many components.
+- Keep the exact permission catalog, role assignments, and seed values in internal project configuration or source files, not in public documentation.
+- For public repositories, document the authorization approach, not the full access matrix.
 
 ## Auth and Token Security
 - Access token and refresh token are issued as `HttpOnly` cookies.
@@ -35,4 +55,3 @@ Refresh-token design in this project follows these references:
 - Rate limiting is enabled for login and refresh endpoints.
 - CORS uses `Cors:AllowedOrigins` from configuration.
 - Error responses are returned as `ProblemDetails`.
-

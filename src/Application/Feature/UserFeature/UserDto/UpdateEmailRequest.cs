@@ -6,7 +6,7 @@ namespace Application.Feature.UserFeature.UserDto
         public string Email { get; set; } = string.Empty;
     }
 
-    public sealed class UpdateEmailRequest : UserEmailUpdateInputDto
+    public class UpdateEmailRequest : UserEmailUpdateInputDto
     {
         public string NewEmail
         {

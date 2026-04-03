@@ -1,3 +1,4 @@
+using Application.Constants;
 using Application.Feature.UserRoleFeature;
 using Application.Feature.UserRoleFeature.UserRoleDto;
 using Microsoft.AspNetCore.Authorization;
@@ -15,6 +16,7 @@ public class UserRoleController(
 {
 
 
+    [Authorize(Policy = PermissionCodes.UserRolesRead)]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -29,6 +31,7 @@ public class UserRoleController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.UserRolesAssign)]
     [HttpPost]
     public async Task<IActionResult> AssignRoleToUser([FromBody] AssignRoleRequest assignRoleRequest)
     {
@@ -43,6 +46,7 @@ public class UserRoleController(
         return Ok(new { message = "Role assigned successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.UserRolesRevoke)]
     [HttpPost("revoke")]
     public async Task<IActionResult> RevokeRoleForUser([FromBody] RevokeRoleRequest revokeRoleRequest)
     {
@@ -56,6 +60,7 @@ public class UserRoleController(
         return Ok(new { message = "Role revoked successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.UsersReadRoles)]
     [HttpGet("~/api/users/{userId:guid}/roles")]
     public async Task<IActionResult> GetRolesForUser(Guid userId)
     {
@@ -69,6 +74,7 @@ public class UserRoleController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.RolesReadUsers)]
     [HttpGet("~/api/roles/{roleId:guid}/users")]
     public async Task<IActionResult> GetUsersForRole(Guid roleId)
     {
