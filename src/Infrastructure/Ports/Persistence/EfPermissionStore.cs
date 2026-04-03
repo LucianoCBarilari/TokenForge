@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Ports.Persistence;
 
-public sealed class EfPermissionStore(TokenForgeContext dbContext) : IPermissionStore
+public class EfPermissionStore(TokenForgeContext dbContext) : IPermissionStore
 {
     public async Task<Permission?> GetByIdAsync(Guid permissionId, CancellationToken ct = default)
     {

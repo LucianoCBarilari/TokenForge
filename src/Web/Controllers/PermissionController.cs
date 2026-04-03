@@ -1,3 +1,4 @@
+using Application.Constants;
 using Application.Feature.PermissionFeature;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ public class PermissionController(
     IPermissionService permissionService,
     ILogger<PermissionController> logger) : ApiControllerBase
 {
+    [Authorize(Policy = PermissionCodes.PermissionsCreate)]
     [HttpPost]
     public async Task<IActionResult> CreatePermission([FromBody] PermissionCreateInputDto input)
     {
@@ -24,6 +26,7 @@ public class PermissionController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.PermissionsUpdate)]
     [HttpPut("{permissionId:guid}")]
     public async Task<IActionResult> UpdatePermission(Guid permissionId, [FromBody] PermissionUpdateInputDto input)
     {
@@ -38,6 +41,7 @@ public class PermissionController(
         return Ok(new { message = "Permission updated successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.PermissionsDeactivate)]
     [HttpPost("{permissionId:guid}/deactivate")]
     public async Task<IActionResult> DeactivatePermission(Guid permissionId)
     {
@@ -51,6 +55,7 @@ public class PermissionController(
         return Ok(new { message = "Permission deactivated successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.PermissionsActivate)]
     [HttpPost("{permissionId:guid}/reactivate")]
     public async Task<IActionResult> ReactivatePermission(Guid permissionId)
     {
@@ -64,6 +69,7 @@ public class PermissionController(
         return Ok(new { message = "Permission reactivated successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.PermissionsRead)]
     [HttpGet]
     public async Task<IActionResult> GetAllPermissions()
     {
@@ -77,6 +83,7 @@ public class PermissionController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.PermissionsRead)]
     [HttpGet("active")]
     public async Task<IActionResult> GetActivePermissions()
     {
@@ -90,6 +97,7 @@ public class PermissionController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.PermissionsRead)]
     [HttpGet("{permissionId:guid}")]
     public async Task<IActionResult> GetPermissionById(Guid permissionId)
     {
@@ -103,6 +111,7 @@ public class PermissionController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.PermissionsRead)]
     [HttpGet("code/{permissionCode}")]
     public async Task<IActionResult> GetPermissionByCode(string permissionCode)
     {

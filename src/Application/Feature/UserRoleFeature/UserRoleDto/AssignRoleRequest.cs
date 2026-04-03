@@ -6,7 +6,7 @@ namespace Application.Feature.UserRoleFeature.UserRoleDto
         public Guid RoleId { get; set; }
     }
 
-    public sealed class AssignRoleRequest : UserRoleAssignInputDto
+    public class AssignRoleRequest : UserRoleAssignInputDto
     {
     }
 }

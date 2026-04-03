@@ -8,7 +8,7 @@ namespace Application.Feature.UserFeature.UserDto
         public Guid RoleId { get; set; }
     }
 
-    public sealed class CreateUserRequest : UserCreateInputDto
+    public class CreateUserRequest : UserCreateInputDto
     {
         public string Pass
         {

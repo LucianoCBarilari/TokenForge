@@ -1,3 +1,4 @@
+using Application.Constants;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
@@ -146,6 +147,17 @@ public static class DependencyInjection
                 }
             };
         });
+
+        builder.Services.AddAuthorization(options =>
+        {            
+
+            foreach (var permission in PermissionCodes.GetAll())
+            {
+                options.AddPolicy(permission, policy =>
+                    policy.RequireClaim(CustomClaimTypes.Permission, permission));
+            }
+        });
+
     }
 
     private static void AddExceptionHandling(IHostApplicationBuilder builder)

@@ -8,7 +8,7 @@ namespace Application.Feature.UserFeature.UserDto
         public string ConfirmPassword { get; set; } = string.Empty;
     }
 
-    public sealed class ChangePasswordRequest : UserPasswordChangeInputDto
+    public class ChangePasswordRequest : UserPasswordChangeInputDto
     {
         public string ConfirmNewPassword
         {

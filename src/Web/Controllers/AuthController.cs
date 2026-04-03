@@ -1,4 +1,5 @@
 
+using Application.Constants;
 using Application.Feature.AuthFeature;
 using Application.Feature.AuthFeature.AuthDto;
 using Application.Feature.RefreshTokenFeature;
@@ -69,6 +70,7 @@ public class AuthController(
     }
 
     [Authorize]
+    [Authorize(Policy = PermissionCodes.AuthLogout)]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest? logoutRequest)
     {
@@ -101,6 +103,7 @@ public class AuthController(
     }
 
     [Authorize]
+    [Authorize(Policy = PermissionCodes.TokensValidate)]
     [HttpPost("tokens/validate")]
     public IActionResult ValidateJwt([FromBody] AccessTokenRequest? accessTokenRequest)
     {
@@ -191,6 +194,7 @@ public class AuthController(
     }
 
     [Authorize]
+    [Authorize(Policy = PermissionCodes.TokensRevokeCurrent)]
     [HttpPost("tokens/revoke/current")]
     public async Task<IActionResult> RevokeCurrentRefreshToken([FromBody] RefreshAccessTokenRequest? request)
     {
@@ -222,7 +226,8 @@ public class AuthController(
         return Ok(new { message = "Current refresh token revoked successfully." });
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize]
+    [Authorize(Policy = PermissionCodes.TokensRevokeAll)]
     [HttpPost("tokens/revoke/users/{userId:guid}")]
     public async Task<IActionResult> RevokeAllUserRefreshTokens(Guid userId)
     {

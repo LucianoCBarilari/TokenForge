@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.DataAccess.Seeds;
 
-public sealed class BootstrapAdminSeedRunner(
+public class BootstrapAdminSeedRunner(
     TokenForgeContext dbContext,
     IConfiguration configuration,
     ILogger<BootstrapAdminSeedRunner> logger)

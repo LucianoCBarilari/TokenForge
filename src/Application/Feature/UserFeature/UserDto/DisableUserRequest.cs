@@ -5,7 +5,7 @@ namespace Application.Feature.UserFeature.UserDto
         public Guid UserId { get; set; }
     }
 
-    public sealed class DisableUserRequest : UserDisableInputDto
+    public class DisableUserRequest : UserDisableInputDto
     {
         public Guid UserToDisable
         {

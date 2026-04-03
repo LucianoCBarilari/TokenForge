@@ -1,3 +1,4 @@
+using Application.Constants;
 using Application.Feature.UserFeature;
 using Application.Feature.UserFeature.UserDto;
 using Domain.Errors;
@@ -15,6 +16,7 @@ public class UserController(
     ) : ApiControllerBase
 {
 
+    [Authorize(Policy = PermissionCodes.UsersCreate)]
     [HttpPost]
     public async Task<IActionResult> CreateNewUser([FromBody] CreateUserRequest request)
     {
@@ -28,6 +30,7 @@ public class UserController(
         return Ok(new { message = "User account created successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.UsersUpdateEmail)]
     [HttpPut("{userId:guid}/email")]
     public async Task<IActionResult> UpdateEmail(Guid userId, [FromBody] UpdateEmailRequest updateEmailDto)
     {
@@ -43,6 +46,7 @@ public class UserController(
         return Ok(new { message = "Email updated successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.UsersUpdateAccount)]
     [HttpPut("{userId:guid}/account")]
     public async Task<IActionResult> UpdateUserAccount(Guid userId, [FromBody] UpdateUserAccountRequest updateUserAccountDto)
     {
@@ -58,6 +62,7 @@ public class UserController(
         return Ok(new { message = "User account updated successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.UsersUpdatePassword)]
     [HttpPut("{userId:guid}/password")]
     public async Task<IActionResult> UpdatePassword(Guid userId, [FromBody] ChangePasswordRequest changePasswordRequest)
     {
@@ -72,6 +77,7 @@ public class UserController(
         return Ok(new { message = "Password updated successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.UsersDisable)]
     [HttpPut("{userId:guid}/disable")]
     public async Task<IActionResult> DisableUser(Guid userId, [FromBody] DisableUserRequest disableUserRequest)
     {
@@ -86,6 +92,7 @@ public class UserController(
         return Ok(new { message = "User disabled successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.UsersRead)]
     [HttpGet("{userId:guid}")]
     public async Task<IActionResult> GetUserById(Guid userId)
     {
@@ -99,6 +106,7 @@ public class UserController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.UsersRead)]
     [HttpGet("active")]
     public async Task<IActionResult> GetAllActiveUsers()
     {
@@ -115,6 +123,7 @@ public class UserController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.UsersReadRoles)]
     [HttpGet("active-with-roles")]
     public async Task<IActionResult> GetActiveUsersWithRoles()
     {
@@ -131,6 +140,7 @@ public class UserController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.UsersReadRoles)]
     [HttpGet("{userId:guid}/with-roles")]
     public async Task<IActionResult> GetActiveUserWithRoles(Guid userId)
     {

@@ -6,7 +6,7 @@ namespace Application.Feature.UserFeature.UserDto
         public string UserAccount { get; set; } = string.Empty;
     }
 
-    public sealed class UpdateUserAccountRequest : UserAccountUpdateInputDto
+    public class UpdateUserAccountRequest : UserAccountUpdateInputDto
     {
         public string NewAccount
         {

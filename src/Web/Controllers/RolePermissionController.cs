@@ -1,3 +1,4 @@
+using Application.Constants;
 using Application.Feature.RolePermissionFeature;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,6 +12,7 @@ public class RolePermissionController(
     IRolePermissionService rolePermissionService,
     ILogger<RolePermissionController> logger) : ApiControllerBase
 {
+    [Authorize(Policy = PermissionCodes.RolePermissionsAssign)]
     [HttpPost("assign")]
     public async Task<IActionResult> AssignPermission([FromBody] AssignRolePermissionInputDto input)
     {
@@ -24,6 +26,7 @@ public class RolePermissionController(
         return Ok(new { message = "Permission assigned to role successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.RolePermissionsRevoke)]
     [HttpPost("revoke")]
     public async Task<IActionResult> RevokePermission([FromBody] RevokeRolePermissionInputDto input)
     {
@@ -37,6 +40,7 @@ public class RolePermissionController(
         return Ok(new { message = "Permission revoked from role successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.RolePermissionsSync)]
     [HttpPut("sync/{roleId:guid}")]
     public async Task<IActionResult> SyncRolePermissions(Guid roleId, [FromBody] SyncRolePermissionsInputDto input)
     {
@@ -51,6 +55,7 @@ public class RolePermissionController(
         return Ok(new { message = "Role permissions synchronized successfully." });
     }
 
+    [Authorize(Policy = PermissionCodes.RolePermissionsRead)]
     [HttpGet("roles/{roleId:guid}/permissions")]
     public async Task<IActionResult> GetPermissionsByRole(Guid roleId)
     {
@@ -64,6 +69,7 @@ public class RolePermissionController(
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = PermissionCodes.RolePermissionsRead)]
     [HttpGet("permissions/{permissionId:guid}/roles")]
     public async Task<IActionResult> GetRolesByPermission(Guid permissionId)
     {
