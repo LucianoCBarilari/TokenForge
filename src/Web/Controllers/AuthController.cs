@@ -22,7 +22,6 @@ public class AuthController(
     IAuthService authService,
     IHandleRefreshToken handleRefreshToken,
     ITokenService tokenService,
-    IJwtValidationParametersProvider jwtValidationParametersProvider,
     AuthCookieWriter authCookieWriter,
     ILogger<AuthController> logger) : ApiControllerBase
 {
@@ -100,51 +99,7 @@ public class AuthController(
         Response.Cookies.Delete(AccessTokenCookieName);
         Response.Cookies.Delete(RefreshTokenCookieName);
         return Ok(new { message = "Logout successful" });
-    }
-
-    [Authorize]
-    [Authorize(Policy = PermissionCodes.TokensValidate)]
-    [HttpPost("tokens/validate")]
-    public IActionResult ValidateJwt([FromBody] AccessTokenRequest? accessTokenRequest)
-    {
-        var accessToken = accessTokenRequest?.AccessToken;
-        if (string.IsNullOrWhiteSpace(accessToken))
-        {
-            accessToken = Request.Cookies[AccessTokenCookieName];
-        }
-
-        if (string.IsNullOrWhiteSpace(accessToken))
-        {
-            logger.LogWarning("JWT validation request failed: Access token is missing.");
-            return BadRequest(new ProblemDetails
-            {
-                Title = "Bad Request",
-                Detail = AuthErrors.TokenValidationFailed.Message,
-                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-                Status = StatusCodes.Status400BadRequest
-            });
-        }
-
-        try
-        {
-            var tokenHandler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
-            var validationParameters = jwtValidationParametersProvider.GetValidationParameters();
-
-            tokenHandler.ValidateToken(accessToken, validationParameters, out _);
-            logger.LogInformation("JWT validated successfully.");
-            return Ok(new { message = "Token is valid." });
-        }
-        catch (Microsoft.IdentityModel.Tokens.SecurityTokenException ex)
-        {
-            logger.LogWarning(ex, "JWT validation failed: {Message}", ex.Message);
-            return HandleFailure(Result.Failure(AuthErrors.TokenValidationFailed));
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "An unexpected error occurred during JWT validation.");
-            return HandleFailure(Result.Failure(AuthErrors.InternalServerError));
-        }
-    }
+    }  
 
     [AllowAnonymous]
     [EnableRateLimiting("refresh")]

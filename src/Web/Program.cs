@@ -1,7 +1,9 @@
 using Application;
 using Infrastructure;
 using Infrastructure.DataAccess.Seeds;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using System.Net;
 using Web;
 using Serilog;
 
@@ -29,23 +31,28 @@ try
 
     app.UseSerilogRequestLogging();
 
-    app.UseForwardedHeaders(new ForwardedHeadersOptions
-    {
-        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
-    });
+    app.UseForwardedHeaders(BuildForwardedHeadersOptions(app.Configuration));
 
     if (app.Environment.IsDevelopment())
     {
         app.UseSwagger();
         app.UseSwaggerUI();
     }
-
+    app.UseExceptionHandler();
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseCors("CorsPolicy");
     app.UseAuthorization();
 
     app.MapControllers();
+    app.MapHealthChecks("/health", new HealthCheckOptions
+    {
+        Predicate = healthCheck => healthCheck.Tags.Contains("live")
+    });
+    app.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        Predicate = healthCheck => healthCheck.Tags.Contains("ready")
+    });
 
     app.Run();
 }
@@ -58,4 +65,22 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+static ForwardedHeadersOptions BuildForwardedHeadersOptions(IConfiguration configuration)
+{
+    var options = new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+        ForwardLimit = configuration.GetValue<int?>("ForwardedHeaders:ForwardLimit") ?? 1
+    };
+
+    var knownProxies = configuration.GetSection("ForwardedHeaders:KnownProxies").Get<string[]>() ?? [];
+    foreach (var proxy in knownProxies)
+    {
+        if (IPAddress.TryParse(proxy, out var ipAddress))
+            options.KnownProxies.Add(ipAddress);
+    }
+
+    return options;
 }

@@ -8,7 +8,6 @@ public static class AuthSeedIds
 
     public static readonly Guid PermissionAuthLoginId = Guid.Parse("7CC9D620-07C7-40D2-A5A7-95E0D1C0B109");
     public static readonly Guid PermissionAuthLogoutId = Guid.Parse("7CC9D620-07C7-40D2-A5A7-95E0D1C0B10A");
-    public static readonly Guid PermissionTokensValidateId = Guid.Parse("7CC9D620-07C7-40D2-A5A7-95E0D1C0B10B");
     public static readonly Guid PermissionTokensRefreshId = Guid.Parse("7CC9D620-07C7-40D2-A5A7-95E0D1C0B10C");
     public static readonly Guid PermissionTokensRevokeCurrentId = Guid.Parse("7CC9D620-07C7-40D2-A5A7-95E0D1C0B101");
     public static readonly Guid PermissionTokensRevokeAllId = Guid.Parse("7CC9D620-07C7-40D2-A5A7-95E0D1C0B102");

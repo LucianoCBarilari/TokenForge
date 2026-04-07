@@ -17,11 +17,17 @@ public partial class UserMapper
     public partial User ToEntity(UserCreateInputDto input);
 
     [MapProperty(nameof(User.UsersId), nameof(UserResponse.UserId))]
+    [MapperIgnoreSource(nameof(User.PasswordHash))]
+    [MapperIgnoreSource(nameof(User.RefreshTokens))]
+    [MapperIgnoreSource(nameof(User.UserRoles))]
     public partial UserResponse ToResponse(User entity);
 
     public partial List<UserResponse> ToResponseList(List<User> entities);
 
     [MapProperty(nameof(User.UsersId), nameof(UserWithRolesResponse.UserId))]
+    [MapperIgnoreSource(nameof(User.PasswordHash))]
+    [MapperIgnoreSource(nameof(User.RefreshTokens))]
+    [MapperIgnoreSource(nameof(User.UserRoles))]
     [MapperIgnoreTarget(nameof(UserWithRolesResponse.Roles))]
     public partial UserWithRolesResponse ToWithRolesResponse(User entity);
 }

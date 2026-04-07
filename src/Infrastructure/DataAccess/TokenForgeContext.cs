@@ -20,6 +20,7 @@ public class TokenForgeContext(DbContextOptions<TokenForgeContext> options) : Db
         {
             entity.HasKey(u => u.UsersId);
             entity.HasIndex(u => u.Email).IsUnique();
+            entity.HasIndex(u => u.UserAccount).IsUnique();
             entity.Property(u => u.Email).IsRequired().HasMaxLength(256);
             entity.Property(u => u.UserAccount).IsRequired().HasMaxLength(100);
             entity.Property(u => u.PasswordHash).IsRequired();
@@ -83,6 +84,7 @@ public class TokenForgeContext(DbContextOptions<TokenForgeContext> options) : Db
             entity.HasKey(la => la.LoginAttemptID);
             entity.Property(la => la.UserAttempt).IsRequired().HasMaxLength(100);
             entity.HasIndex(la => la.UserAttempt);
+            entity.HasIndex(la => new { la.UserId, la.LastAttemptAt });
             entity.Property(la => la.UserId).IsRequired();
             entity.Property(la => la.FailedAttempts).IsRequired();
             entity.Property(la => la.LastAttemptAt).IsRequired();

@@ -1,4 +1,5 @@
 using Application.Abstractions.Common;
+using Application.Abstractions.Persistence;
 using Application.Abstractions.Security;
 using Application.Common;
 using Application.Feature.UserFeature.UserDto;
@@ -9,6 +10,7 @@ public class UserService(
     IUserStore userStore,
     IRoleStore roleStore,
     IUserRoleStore userRoleStore,
+    ITransactionalUnitOfWork unitOfWork,
     IPasswordHasherPort passwordHasher,
     IClock clock,
     Helpers helper,
@@ -42,19 +44,38 @@ public class UserService(
         user.IsActive = true;
         user.CreatedAt = clock.UtcNow;
 
-        await userStore.AddAsync(user);
-        await userStore.SaveChangesAsync();
-
-        var userRole = new UserRole
+        try
         {
-            UserId = user.UsersId,
-            RoleId = input.RoleId,
-            AssignedAt = clock.UtcNow,
-            IsActive = true
-        };
+            await unitOfWork.BeginTransactionAsync();
 
-        await userRoleStore.AddAsync(userRole);
-        await userRoleStore.SaveChangesAsync();
+            await userStore.AddAsync(user);
+            await userStore.SaveChangesAsync();
+
+            var userRole = new UserRole
+            {
+                UserId = user.UsersId,
+                RoleId = input.RoleId,
+                AssignedAt = clock.UtcNow,
+                IsActive = true
+            };
+
+            await userRoleStore.AddAsync(userRole);
+            await userRoleStore.SaveChangesAsync();
+
+            await unitOfWork.CommitAsync();
+        }
+        catch (UserStoreConflictException ex)
+        {
+            await unitOfWork.RollbackAsync();
+            return Result.Failure(MapUserStoreConflict(ex));
+        }
+        catch (Exception ex)
+        {
+            await unitOfWork.RollbackAsync();
+
+            logger.LogError(ex, "Failed to create user account for {UserAccount}", input.UserAccount);
+            return Result.Failure(new Error("User.CreateFailed", "Failed to create user account."));
+        }
 
         logger.LogInformation("User account created for {UserAccount}", user.UserAccount);
         return Result.Success();
@@ -81,8 +102,16 @@ public class UserService(
         user.Email = input.Email;
         user.UpdatedAt = clock.UtcNow;
 
-        userStore.Update(user);
-        await userStore.SaveChangesAsync();
+        try
+        {
+            userStore.Update(user);
+            await userStore.SaveChangesAsync();
+        }
+        catch (UserStoreConflictException ex)
+        {
+            return Result.Failure(MapUserStoreConflict(ex));
+        }
+
         return Result.Success();
     }
 
@@ -107,8 +136,16 @@ public class UserService(
         user.UserAccount = input.UserAccount;
         user.UpdatedAt = clock.UtcNow;
 
-        userStore.Update(user);
-        await userStore.SaveChangesAsync();
+        try
+        {
+            userStore.Update(user);
+            await userStore.SaveChangesAsync();
+        }
+        catch (UserStoreConflictException ex)
+        {
+            return Result.Failure(MapUserStoreConflict(ex));
+        }
+
         return Result.Success();
     }
 
@@ -226,5 +263,15 @@ public class UserService(
             return UserErrors.UserNotFound;
 
         return Result<User>.Success(user);
+    }
+
+    private static Error MapUserStoreConflict(UserStoreConflictException exception)
+    {
+        return exception.ConflictType switch
+        {
+            UserStoreConflictType.Email => UserErrors.EmailAlreadyInUse,
+            UserStoreConflictType.UserAccount => UserErrors.AccountAlreadyInUse,
+            _ => new Error("User.CreateFailed", "Failed to create user account.")
+        };
     }
 }

@@ -1,4 +1,5 @@
 using Application.Abstractions.Persistence;
+using Application.Feature.UserFeature;
 using Domain.Entities;
 using Infrastructure.DataAccess;
 using Microsoft.EntityFrameworkCore;
@@ -45,8 +46,23 @@ public  class EfUserStore(TokenForgeContext dbContext) : IUserStore
         dbContext.Users.Update(user);
     }
 
-    public Task SaveChangesAsync(CancellationToken ct = default)
+    public async Task SaveChangesAsync(CancellationToken ct = default)
     {
-        return dbContext.SaveChangesAsync(ct);
+        try
+        {
+            await dbContext.SaveChangesAsync(ct);
+        }
+        catch (DbUpdateException ex)
+        {
+            var message = ex.InnerException?.Message ?? ex.Message;
+
+            if (message.Contains("IX_Users_Email", StringComparison.OrdinalIgnoreCase))
+                throw new UserStoreConflictException(UserStoreConflictType.Email, ex);
+
+            if (message.Contains("IX_Users_UserAccount", StringComparison.OrdinalIgnoreCase))
+                throw new UserStoreConflictException(UserStoreConflictType.UserAccount, ex);
+
+            throw;
+        }
     }
 }

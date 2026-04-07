@@ -1,14 +1,15 @@
 <Solution>
   <Project Path="src/Application/Application.csproj">
-    <Build Solution="Debug|*" Project="false" />
+    <Build Solution="Debug|*" Project="true" />
   </Project>
   <Project Path="src/Domain/Domain.csproj">
-    <Build Solution="Debug|*" Project="false" />
+    <Build Solution="Debug|*" Project="true" />
   </Project>
   <Project Path="src/Infrastructure/Infrastructure.csproj">
-    <Build Solution="Debug|*" Project="false" />
+    <Build Solution="Debug|*" Project="true" />
   </Project>
   <Project Path="src/Web/Web.csproj">
-    <Build Solution="Debug|*" Project="false" />
+    <Build Solution="Debug|*" Project="true" />
   </Project>
+  <Project Path="test/TokenForge.IntegrationTests/TokenForge.IntegrationTests.csproj" />
 </Solution>

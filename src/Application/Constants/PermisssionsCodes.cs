@@ -5,7 +5,6 @@ public static class PermissionCodes
     public const string AuthLogin = "auth.login";
     public const string AuthLogout = "auth.logout";
 
-    public const string TokensValidate = "tokens.validate";
     public const string TokensRefresh = "tokens.refresh";
     public const string TokensRevokeCurrent = "tokens.revoke.current";
     public const string TokensRevokeAll = "tokens.revoke.all";
@@ -47,7 +46,6 @@ public static class PermissionCodes
                AuthLogin,
                AuthLogout,
 
-               TokensValidate,
                TokensRefresh,
                TokensRevokeCurrent,
                TokensRevokeAll,

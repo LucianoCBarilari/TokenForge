@@ -16,6 +16,22 @@ JWT auth API built with ASP.NET Core (.NET 10), using Clean Architecture, refres
    - `dotnet run --project src/Web/Web.csproj`
 6. Swagger (development): `https://localhost:<port>/swagger`
 
+## Required Setup Checklist
+Before considering the API ready to run correctly in a real environment, make sure the following items are completed:
+
+- Replace placeholder secrets such as `JwtSettings:SecretKey` and `RefreshTokenSecurity:HashKey`.
+- Set a valid `ConnectionStrings:JWT_Security` value for your SQL Server instance.
+- Configure `Cors:AllowedOrigins` for the frontend domains that should be allowed to call the API.
+- Review `AuthCookie` settings for your environment, especially `Secure`, `HttpOnly`, `SameSite`, access token lifetime fallback, and refresh token lifetime.
+- Review `ForwardedHeaders` configuration if the API will run behind Nginx, a reverse proxy, or a load balancer.
+- Keep `ASPNETCORE_ENVIRONMENT=Development` only for local development. Production deployments should run with `Production`.
+- If `BootstrapAdmin:Enabled` is set to `true`, provide a real administrator account, password, email, and role name.
+- Apply database migrations after changing entity mappings, permission seeds, role seeds, or role-permission seeds.
+- Verify that login rate limiting and refresh rate limiting are configured with values that match your expected traffic.
+- Decide whether the current single active refresh-token session model per user matches your product requirements.
+- Confirm that Swagger remains available only in development unless you intentionally protect and expose it in another environment.
+- Verify that `/health` and `/health/ready` are reachable from your deployment environment if you plan to use container or proxy health checks.
+
 ## Authorization Model
 The API uses both roles and granular permissions.
 
