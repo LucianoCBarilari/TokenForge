@@ -10,11 +10,11 @@ public  class SqlServerFixture : IAsyncLifetime
     .WithPassword("YourStrong!Passw0rd")  
     .Build();
 
-    public TokenForgeContext context { get; private set; }
+    public TokenForgeContext Context { get; private set; }
     public async ValueTask DisposeAsync()
     {
         await container.DisposeAsync();
-        context?.Dispose();
+        Context?.Dispose();
     }
 
     public async ValueTask  InitializeAsync()
@@ -26,7 +26,7 @@ public  class SqlServerFixture : IAsyncLifetime
             .UseSqlServer(connString)
             .Options;
 
-        context = new TokenForgeContext(options);
-        await context.Database.MigrateAsync();
+        Context = new TokenForgeContext(options);
+        await Context.Database.MigrateAsync();
     }
 }

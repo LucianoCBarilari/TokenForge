@@ -37,5 +37,11 @@ TokenForge/appsettings.Development.json
 src/Web/appsettings.Development.json
 **/appsettings.Development.json
 
+# Environment variables
+.env
+
+# Docker (local overrides)
+docker-compose.override.yml
+
 .dotnet/
 

@@ -29,6 +29,9 @@ public class UserService(
         if (!helper.AccountValidator(input.UserAccount))
             return Result.Failure(new Error("User.InvalidAccountFormat", "Invalid user account format. Must be 1-20 characters long and can only contain letters, numbers, and underscores."));
 
+        if (!helper.PassValidator(input.Password))
+            return Result.Failure(UserErrors.InvalidPassword);
+
         if (await userStore.ExistsByEmailAsync(input.Email))
             return Result.Failure(UserErrors.EmailAlreadyInUse);
 

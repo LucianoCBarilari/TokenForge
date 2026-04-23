@@ -3,6 +3,7 @@ using Application.Abstractions.Security;
 using Application.Feature.AuthFeature.AuthDto;
 using Application.Feature.LockoutFeature;
 using Application.Feature.RefreshTokenFeature;
+using Application.Feature.TokenFeature;
 
 namespace Application.Feature.AuthFeature;
 
@@ -11,7 +12,7 @@ public class AuthService(
     ILockoutService lockoutService,
     ITransactionalUnitOfWork unitOfWork,
     IPasswordHasherPort passwordHasher,
-    IJwtProvider jwtProvider,
+    ITokenService tokenService,
     IHandleRefreshToken handleRefreshToken,
     IClock clock,
     ILogger<AuthService> logger) : IAuthService
@@ -35,13 +36,6 @@ public class AuthService(
             await lockoutService.RecordFailedLoginAttempt(userLogin.UserAccount);
             return AuthErrors.InvalidCredentials;
         }
-
-        var rolesAndPermissions = await loginStore.GetUserRolesAndPermissionsAsync(currentUser.UsersId);
-        if (rolesAndPermissions.Roles.Count == 0)
-            return AuthErrors.Unauthorized;
-
-        var permissionsCodes = rolesAndPermissions.Permissions.Values.ToList();
-        var roleNames = rolesAndPermissions.Roles.Values.ToList();
 
         string refreshToken;
 
@@ -73,14 +67,15 @@ public class AuthService(
             return AuthErrors.InternalServerError;
         }
 
-        var accessToken = jwtProvider.CreateAccessToken(
-            currentUser.UsersId,
-            currentUser.Email,
-            roleNames,
-            permissionsCodes);
+        var accessToken = await tokenService.GenerateNewAccessTokenAsync(currentUser.UsersId, currentUser.Email);
+        if (accessToken.IsFailure)
+        {
+            logger.LogError("Failed to generate access token for {UserAccount}: {Error}", userLogin.UserAccount, accessToken.Error.Message);
+            return accessToken.Error;
+        }
 
         return Result<AuthResponse>.Success(AuthResponse.Success(
-            accessToken,
+            accessToken.Value,
             refreshToken,
             currentUser.UsersId,
             currentUser.UserAccount));

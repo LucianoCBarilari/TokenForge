@@ -146,6 +146,7 @@ public static class DependencyInjection
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
+                ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 },
                 ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
                 ValidAudience = builder.Configuration["JwtSettings:Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(
@@ -232,9 +233,17 @@ public static class DependencyInjection
                         retainedFileCountLimit: 14);
             }
 
+            if (!builder.Environment.IsDevelopment())
+            {
+                loggerConfiguration.WriteTo.File(
+                    Path.Combine(logsDirectory, "web-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30,
+                    outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+            }
+
             if (builder.Environment.IsDevelopment())
             {
-                // Overrides para ver logs detallados de tus capas
                 loggerConfiguration
                     .MinimumLevel.Override("Web", LogEventLevel.Debug)
                     .MinimumLevel.Override("Application", LogEventLevel.Debug)
@@ -282,6 +291,10 @@ public static class DependencyInjection
             {
                 ValidateNotPlaceholder(adminPassword, "BootstrapAdmin:Password");
                 ValidateMinimumLength(adminPassword!, "BootstrapAdmin:Password", 12);
+
+                Log.Warning(
+                    "*** SECURITY WARNING: BootstrapAdmin is ENABLED in Production. " +
+                    "Set BootstrapAdmin:Enabled=false immediately after the first login. ***");
             }
         }
     }

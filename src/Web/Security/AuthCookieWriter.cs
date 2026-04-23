@@ -34,7 +34,19 @@ public class AuthCookieWriter(IConfiguration configuration)
             HttpOnly = _httpOnly,
             Secure = _secure,
             SameSite = _sameSite,
-            Expires = DateTime.UtcNow.AddDays(_refreshTokenDays)
+            Expires = DateTime.UtcNow.AddDays(_refreshTokenDays),
+            Path = "/api/auth/tokens"
+        };
+    }
+
+    public CookieOptions BuildRefreshTokenDeleteOptions()
+    {
+        return new CookieOptions
+        {
+            HttpOnly = _httpOnly,
+            Secure = _secure,
+            SameSite = _sameSite,
+            Path = "/api/auth/tokens"
         };
     }
 }

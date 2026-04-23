@@ -1,8 +1,11 @@
 using Application;
+using DotNetEnv;
 using Infrastructure;
+using Infrastructure.DataAccess;
 using Infrastructure.DataAccess.Seeds;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
 using System.Net;
 using Web;
 using Serilog;
@@ -16,6 +19,15 @@ try
     Log.Information("Starting web application");
 
     var builder = WebApplication.CreateBuilder(args);
+
+    // Load .env file if present (local dev without Docker).
+    // In production/Docker the variables come from the container environment.
+    var envPath = Path.Combine(builder.Environment.ContentRootPath, "..", "..", "..", "..", ".env");
+    if (File.Exists(envPath))
+    {
+        Env.Load(envPath);
+        Log.Information(".env file loaded from {Path}", Path.GetFullPath(envPath));
+    }
     
     builder.AddWebServices();
     builder.AddInfrastructureServices();
@@ -25,6 +37,9 @@ try
 
     using (var scope = app.Services.CreateScope())
     {
+        var db = scope.ServiceProvider.GetRequiredService<TokenForgeContext>();
+        await db.Database.MigrateAsync();
+
         var bootstrapSeeder = scope.ServiceProvider.GetRequiredService<BootstrapAdminSeedRunner>();
         await bootstrapSeeder.RunAsync();
     }

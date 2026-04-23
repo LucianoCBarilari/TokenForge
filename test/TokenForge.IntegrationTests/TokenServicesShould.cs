@@ -15,6 +15,7 @@ public class TokenServicesShould : IClassFixture<SqlServerFixture>
     private readonly Mock<IConfiguration> configMock = new();
     private readonly IJwtProvider jwtProvider;
     private readonly TokenService tokenService;
+    private readonly LoginStore loginStore;
     public TokenServicesShould(SqlServerFixture _fixture)
     {
         fixture = _fixture;
@@ -36,21 +37,20 @@ public class TokenServicesShould : IClassFixture<SqlServerFixture>
 
         jwtProvider = new JwtProvider(configMock.Object);
 
-        var userStore = new UserStore(fixture.context);
-        var userRoleStore = new UserRoleStore(fixture.context);
-        var rolePermissionStore = new RolePermissionStore(fixture.context);
+        var userStore = new EfUserStore(fixture.Context);
+
+        loginStore = new LoginStore(fixture.Context);
 
         tokenService = new TokenService(
-            userStore, 
-            userRoleStore, 
-            rolePermissionStore,
+            userStore,
+            loginStore, 
             jwtProvider, 
             configMock.Object
             );
     }
     [Fact]
-    public async Task GenerateNewAccessTokenAsync_ValidUser_ReturnsTokenWithRoles() 
-    {
+    public async Task GenerateNewAccessTokenAsync_ValidUser_ReturnsTokenWithRolesAndPermissions() 
+    {     
         var user = new User
         {
             UsersId = Guid.NewGuid(),
@@ -58,7 +58,7 @@ public class TokenServicesShould : IClassFixture<SqlServerFixture>
             IsActive = true,
            
         };
-        fixture.context.Users.Add(user);
+        fixture.Context.Users.Add(user);
 
         var role = new Role
         {
@@ -66,19 +66,33 @@ public class TokenServicesShould : IClassFixture<SqlServerFixture>
             RoleName = "Admin",
             IsActive = true
         };
-        fixture.context.Roles.Add(role);
+        fixture.Context.Roles.Add(role);
 
-        fixture.context.UserRoles.Add(new UserRole
+        fixture.Context.UserRoles.Add(new UserRole
         {
             UserId = user.UsersId,
             RoleId = role.RolesId,
+            Role = role,
             IsActive = true,
             AssignedAt = DateTime.UtcNow
         });
-        await fixture.context.SaveChangesAsync();
+        var permission = new Permission()
+        {
+            PermissionId = Guid.NewGuid(),
+            PermissionCode = "manage.users",
+            IsActive = true
+        };
+        fixture.Context.Permissions.Add(permission);
 
+        fixture.Context.RolePermissions.Add(new RolePermission
+        {
+            RoleId = role.RolesId,
+            PermissionId = permission.PermissionId,
+            IsActive = true,
+            AssignedAt = DateTime.UtcNow
+        });
+        await fixture.Context.SaveChangesAsync();   
         var result = await tokenService.GenerateNewAccessTokenAsync(user.UsersId);
-
         
         var tokenString = result.Value;          
         Assert.NotNull(tokenString);
@@ -91,7 +105,38 @@ public class TokenServicesShould : IClassFixture<SqlServerFixture>
             .Where(c => c.Type == "role" || c.Type == ClaimTypes.Role)
             .Select(c => c.Value)
             .ToList();
+        var permissionClaims = jwtToken.Claims
+            .Where(c => c.Type == "permission")
+            .Select(c => c.Value)
+            .ToList();
 
+        Assert.Contains("manage.users", permissionClaims);
         Assert.Contains("Admin", roleClaims);
+    }
+    [Fact]
+    public async Task GenerateNewAccessTokenAsync_InvalidUser_ReturnsNull()
+    {
+        var result = await tokenService.GenerateNewAccessTokenAsync(Guid.NewGuid());
+        Assert.Null(result.Value);
+    }
+    [Fact]
+    public async Task GenerateNewAccessTokenAsync_UserIsInactive_ReturnsNull()
+    {
+        var user = new User
+        {
+            UsersId = Guid.NewGuid(),
+            Email = "test@planfi.com",
+            IsActive = false,
+
+        };
+        await fixture.Context.SaveChangesAsync();
+
+        var result = await tokenService.GenerateNewAccessTokenAsync(user.UsersId);
+        Assert.Null(result.Value);
+    }
+
+
+    public async Task HashRefreshToken_()
+    {
     }
 }

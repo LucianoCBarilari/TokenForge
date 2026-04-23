@@ -97,7 +97,7 @@ public class AuthController(
             return HandleFailure(result);
         }
         Response.Cookies.Delete(AccessTokenCookieName);
-        Response.Cookies.Delete(RefreshTokenCookieName);
+        Response.Cookies.Delete(RefreshTokenCookieName, authCookieWriter.BuildRefreshTokenDeleteOptions());
         return Ok(new { message = "Logout successful" });
     }  
 
@@ -177,7 +177,7 @@ public class AuthController(
             return HandleFailure(result);
         }
 
-        Response.Cookies.Delete(RefreshTokenCookieName);
+        Response.Cookies.Delete(RefreshTokenCookieName, authCookieWriter.BuildRefreshTokenDeleteOptions());
         return Ok(new { message = "Current refresh token revoked successfully." });
     }
 
