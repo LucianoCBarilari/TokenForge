@@ -27,8 +27,9 @@ public static class DependencyInjection
         builder.Services.AddScoped<IUserRoleStore, EfUserRoleStore>();
         builder.Services.AddScoped<IPermissionStore, EfPermissionStore>();
         builder.Services.AddScoped<IRolePermissionStore, EfRolePermissionStore>();
-        builder.Services.AddScoped<ITransactionalUnitOfWork, EfTransactionalUnitOfWorkEfRoleStore>();
+        builder.Services.AddScoped<ITransactionalUnitOfWork, EfTransactionalUnitOfWork>();
         builder.Services.AddScoped<IAuthStore, EfAuthStore>();
+        builder.Services.AddScoped<ILoginStore, LoginStore>();
         builder.Services.AddScoped<IPasswordHasherPort, AspNetPasswordHasherPort>();
         builder.Services.AddScoped<IJwtProvider, JwtProvider>();
         builder.Services.AddSingleton<IJwtValidationParametersProvider, JwtValidationParametersProvider>();

@@ -30,15 +30,6 @@ public static class PermissionSeed
             },
             new Permission
             {
-                PermissionId = AuthSeedIds.PermissionTokensValidateId,
-                PermissionCode = "tokens.validate",
-                PermissionName = "Validate Token",
-                PermissionDescription = "Validate an access token.",
-                IsActive = true,
-                CreatedAt = createdAt
-            },
-            new Permission
-            {
                 PermissionId = AuthSeedIds.PermissionTokensRefreshId,
                 PermissionCode = "tokens.refresh",
                 PermissionName = "Refresh Token",

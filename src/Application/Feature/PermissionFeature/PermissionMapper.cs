@@ -11,6 +11,7 @@ public partial class PermissionMapper
     [MapperIgnoreTarget(nameof(Permission.RolePermissions))]
     public partial Permission ToEntity(PermissionCreateInputDto dto);
 
+    [MapperIgnoreSource(nameof(PermissionUpdateInputDto.PermissionId))]
     [MapperIgnoreTarget(nameof(Permission.PermissionId))]
     [MapperIgnoreTarget(nameof(Permission.PermissionCode))]
     [MapperIgnoreTarget(nameof(Permission.IsActive))]

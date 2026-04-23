@@ -13,7 +13,6 @@ public static class RolePermissionSeed
             // Admin: full set
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C010"), RoleId = AuthSeedIds.AdminRoleId, PermissionId = AuthSeedIds.PermissionAuthLoginId, AssignedAt = assignedAt, IsActive = true },
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C011"), RoleId = AuthSeedIds.AdminRoleId, PermissionId = AuthSeedIds.PermissionAuthLogoutId, AssignedAt = assignedAt, IsActive = true },
-            new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C012"), RoleId = AuthSeedIds.AdminRoleId, PermissionId = AuthSeedIds.PermissionTokensValidateId, AssignedAt = assignedAt, IsActive = true },
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C013"), RoleId = AuthSeedIds.AdminRoleId, PermissionId = AuthSeedIds.PermissionTokensRefreshId, AssignedAt = assignedAt, IsActive = true },
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C001"), RoleId = AuthSeedIds.AdminRoleId, PermissionId = AuthSeedIds.PermissionTokensRevokeCurrentId, AssignedAt = assignedAt, IsActive = true },
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C002"), RoleId = AuthSeedIds.AdminRoleId, PermissionId = AuthSeedIds.PermissionTokensRevokeAllId, AssignedAt = assignedAt, IsActive = true },
@@ -45,7 +44,6 @@ public static class RolePermissionSeed
             // Manager: operational set (no global token revoke, no role write)
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C026"), RoleId = AuthSeedIds.ManagerRoleId, PermissionId = AuthSeedIds.PermissionAuthLoginId, AssignedAt = assignedAt, IsActive = true },
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C027"), RoleId = AuthSeedIds.ManagerRoleId, PermissionId = AuthSeedIds.PermissionAuthLogoutId, AssignedAt = assignedAt, IsActive = true },
-            new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C028"), RoleId = AuthSeedIds.ManagerRoleId, PermissionId = AuthSeedIds.PermissionTokensValidateId, AssignedAt = assignedAt, IsActive = true },
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C029"), RoleId = AuthSeedIds.ManagerRoleId, PermissionId = AuthSeedIds.PermissionTokensRefreshId, AssignedAt = assignedAt, IsActive = true },
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C009"), RoleId = AuthSeedIds.ManagerRoleId, PermissionId = AuthSeedIds.PermissionTokensRevokeCurrentId, AssignedAt = assignedAt, IsActive = true },
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C00A"), RoleId = AuthSeedIds.ManagerRoleId, PermissionId = AuthSeedIds.PermissionUsersReadId, AssignedAt = assignedAt, IsActive = true },
@@ -68,7 +66,6 @@ public static class RolePermissionSeed
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C00F"), RoleId = AuthSeedIds.UserRoleId, PermissionId = AuthSeedIds.PermissionTokensRevokeCurrentId, AssignedAt = assignedAt, IsActive = true },
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C034"), RoleId = AuthSeedIds.UserRoleId, PermissionId = AuthSeedIds.PermissionAuthLoginId, AssignedAt = assignedAt, IsActive = true },
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C035"), RoleId = AuthSeedIds.UserRoleId, PermissionId = AuthSeedIds.PermissionAuthLogoutId, AssignedAt = assignedAt, IsActive = true },
-            new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C036"), RoleId = AuthSeedIds.UserRoleId, PermissionId = AuthSeedIds.PermissionTokensValidateId, AssignedAt = assignedAt, IsActive = true },
             new RolePermission { RolePermissionId = Guid.Parse("4FA8AAB1-4EE8-4E54-B1F0-8AF8F022C037"), RoleId = AuthSeedIds.UserRoleId, PermissionId = AuthSeedIds.PermissionTokensRefreshId, AssignedAt = assignedAt, IsActive = true }
         );
     }

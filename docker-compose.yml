@@ -1,0 +1,20 @@
+services:
+
+  api:
+    build:
+      context: ./src/Web
+      dockerfile: Dockerfile
+    container_name: tokenforge-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    networks:
+      - tokenforge-net
+
+networks:
+  tokenforge-net:
+    driver: bridge

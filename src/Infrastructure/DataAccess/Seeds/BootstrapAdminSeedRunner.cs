@@ -34,7 +34,7 @@ public class BootstrapAdminSeedRunner(
         var now = DateTime.UtcNow;
 
         var user = await dbContext.Users
-            .FirstOrDefaultAsync(u => u.UserAccount == userAccount || u.Email == email, ct);
+            .FirstOrDefaultAsync(u => u.UserAccount == userAccount && u.Email == email, ct);
 
         if (user is null)
         {

@@ -52,6 +52,19 @@ public abstract class ApiControllerBase : ControllerBase
             return StatusCodes.Status404NotFound;
         }
 
+        if (code.Contains("Invalid", StringComparison.OrdinalIgnoreCase) ||
+            code.EndsWith(".Required", StringComparison.OrdinalIgnoreCase) ||
+            code.EndsWith(".Format", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCodes.Status400BadRequest;
+        }
+
+        if (code.Contains("Already", StringComparison.OrdinalIgnoreCase) ||
+            code.EndsWith(".InUse", StringComparison.OrdinalIgnoreCase))
+        {
+            return StatusCodes.Status409Conflict;
+        }
+
         return code switch
         {
             var c when c == AuthErrors.InvalidCredentials.Code => StatusCodes.Status401Unauthorized,
@@ -59,7 +72,6 @@ public abstract class ApiControllerBase : ControllerBase
             var c when c == AuthErrors.UserLockedOut.Code => StatusCodes.Status401Unauthorized,
             var c when c == AuthErrors.UserNotAuthenticated.Code => StatusCodes.Status401Unauthorized,
             var c when c == AuthErrors.LogoutFailed.Code => StatusCodes.Status400BadRequest,
-            var c when c == AuthErrors.TokenValidationFailed.Code => StatusCodes.Status401Unauthorized,
             var c when c == AuthErrors.MissingRefreshToken.Code => StatusCodes.Status401Unauthorized,
             var c when c == AuthErrors.InvalidRefreshToken.Code => StatusCodes.Status401Unauthorized,
             var c when c == AuthErrors.FailedToGenerateAccessToken.Code => StatusCodes.Status401Unauthorized,

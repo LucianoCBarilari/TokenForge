@@ -1,6 +1,8 @@
 using Application.Constants;
+using Infrastructure.DataAccess;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using Serilog;
@@ -16,11 +18,13 @@ public static class DependencyInjection
 {
     public static void AddWebServices(this IHostApplicationBuilder builder)
     {
+        ValidateWebConfiguration(builder);
         AddWebLogging(builder);
         AddExceptionHandling(builder);
         AddWebSecurity(builder);
         AddWebCors(builder);
         AddWebRateLimiting(builder);
+        AddWebHealthChecks(builder);
         AddWebSwagger(builder);
         builder.Services.AddScoped<AuthCookieWriter>();
 
@@ -33,31 +37,50 @@ public static class DependencyInjection
              options.JsonSerializerOptions.WriteIndented = builder.Environment.IsDevelopment();
          });
     }
-
+    private static void AddWebHealthChecks(IHostApplicationBuilder builder)
+    {
+        builder.Services
+            .AddHealthChecks()
+            .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
+            .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"]);
+    }
     private static void AddWebRateLimiting(IHostApplicationBuilder builder)
     {
         builder.Services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-            options.AddFixedWindowLimiter("login", limiterOptions =>
+            options.AddPolicy("login", httpContext =>
             {
-                limiterOptions.Window = TimeSpan.FromMinutes(1);
-                limiterOptions.PermitLimit = 5;
-                limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                limiterOptions.QueueLimit = 0;
+                var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: $"login:{ip}",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        Window = TimeSpan.FromMinutes(1),
+                        PermitLimit = 10,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    });
             });
 
-            options.AddFixedWindowLimiter("refresh", limiterOptions =>
+            options.AddPolicy("refresh", httpContext =>
             {
-                limiterOptions.Window = TimeSpan.FromMinutes(1);
-                limiterOptions.PermitLimit = 30;
-                limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-                limiterOptions.QueueLimit = 0;
+                var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: $"refresh:{ip}",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        Window = TimeSpan.FromMinutes(1),
+                        PermitLimit = 30,
+                        QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                        QueueLimit = 0
+                    });
             });
         });
     }
-
     private static void AddWebCors(IHostApplicationBuilder builder)
     {
         var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
@@ -75,7 +98,6 @@ public static class DependencyInjection
             });
         });
     }
-
     private static void AddWebSwagger(IHostApplicationBuilder builder)
     {
         builder.Services.AddEndpointsApiExplorer();
@@ -109,7 +131,6 @@ public static class DependencyInjection
             });
         });
     }
-
     private static void AddWebSecurity(IHostApplicationBuilder builder)
     {
         builder.Services.AddAuthentication(options =>
@@ -125,6 +146,7 @@ public static class DependencyInjection
                 ValidateAudience = true,
                 ValidateLifetime = true,
                 ValidateIssuerSigningKey = true,
+                ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256 },
                 ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
                 ValidAudience = builder.Configuration["JwtSettings:Audience"],
                 IssuerSigningKey = new SymmetricSecurityKey(
@@ -159,7 +181,6 @@ public static class DependencyInjection
         });
 
     }
-
     private static void AddExceptionHandling(IHostApplicationBuilder builder)
     {
         //ProblemDetails (RFC 7807/9457)
@@ -183,7 +204,6 @@ public static class DependencyInjection
         });
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
     }
-
     private static void AddWebLogging(IHostApplicationBuilder builder)
     {
         var logsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
@@ -213,9 +233,17 @@ public static class DependencyInjection
                         retainedFileCountLimit: 14);
             }
 
+            if (!builder.Environment.IsDevelopment())
+            {
+                loggerConfiguration.WriteTo.File(
+                    Path.Combine(logsDirectory, "web-.log"),
+                    rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 30,
+                    outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}");
+            }
+
             if (builder.Environment.IsDevelopment())
             {
-                // Overrides para ver logs detallados de tus capas
                 loggerConfiguration
                     .MinimumLevel.Override("Web", LogEventLevel.Debug)
                     .MinimumLevel.Override("Application", LogEventLevel.Debug)
@@ -224,4 +252,66 @@ public static class DependencyInjection
             }
         });
     }
+    private static void ValidateWebConfiguration(IHostApplicationBuilder builder)
+    {
+        var configuration = builder.Configuration;
+        var environment = builder.Environment;
+
+        var jwtSecret = configuration["JwtSettings:SecretKey"];
+        var refreshHashKey = configuration["RefreshTokenSecurity:HashKey"];
+        var connectionString = configuration.GetConnectionString("JWT_Security");
+
+        ValidateRequiredValue(jwtSecret, "JwtSettings:SecretKey");
+        ValidateRequiredValue(refreshHashKey, "RefreshTokenSecurity:HashKey");
+        ValidateRequiredValue(connectionString, "ConnectionStrings:JWT_Security");
+
+        if (environment.IsProduction())
+        {
+            ValidateNotPlaceholder(jwtSecret, "JwtSettings:SecretKey");
+            ValidateNotPlaceholder(refreshHashKey, "RefreshTokenSecurity:HashKey");
+
+            ValidateMinimumLength(jwtSecret!, "JwtSettings:SecretKey", 32);
+            ValidateMinimumLength(refreshHashKey!, "RefreshTokenSecurity:HashKey", 32);
+        }
+
+        var bootstrapAdminEnabled = configuration.GetValue<bool>("BootstrapAdmin:Enabled");
+        if (bootstrapAdminEnabled)
+        {
+            var adminUserAccount = configuration["BootstrapAdmin:UserAccount"];
+            var adminEmail = configuration["BootstrapAdmin:Email"];
+            var adminPassword = configuration["BootstrapAdmin:Password"];
+            var adminRoleName = configuration["BootstrapAdmin:RoleName"];
+
+            ValidateRequiredValue(adminUserAccount, "BootstrapAdmin:UserAccount");
+            ValidateRequiredValue(adminEmail, "BootstrapAdmin:Email");
+            ValidateRequiredValue(adminPassword, "BootstrapAdmin:Password");
+            ValidateRequiredValue(adminRoleName, "BootstrapAdmin:RoleName");
+
+            if (environment.IsProduction())
+            {
+                ValidateNotPlaceholder(adminPassword, "BootstrapAdmin:Password");
+                ValidateMinimumLength(adminPassword!, "BootstrapAdmin:Password", 12);
+
+                Log.Warning(
+                    "*** SECURITY WARNING: BootstrapAdmin is ENABLED in Production. " +
+                    "Set BootstrapAdmin:Enabled=false immediately after the first login. ***");
+            }
+        }
+    }
+    private static void ValidateRequiredValue(string? value, string key)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException($"Configuration value '{key}' is required.");
+    }
+    private static void ValidateNotPlaceholder(string? value, string key)
+    {
+        if (string.Equals(value?.Trim(), "CHANGE_ME", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException($"Configuration value '{key}' must be replaced before running in Production.");
+    }
+    private static void ValidateMinimumLength(string value, string key, int minLength)
+    {
+        if (value.Trim().Length < minLength)
+            throw new InvalidOperationException($"Configuration value '{key}' must be at least {minLength} characters long.");
+    }
+
 }

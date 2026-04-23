@@ -18,8 +18,7 @@ namespace Application.Feature.TokenFeature;
 // https://datatracker.ietf.org/doc/html/rfc6819#section-5.1.4.1.3
 public class TokenService(
     IUserStore userStore,
-    IUserRoleStore userRoleStore,
-    IRolePermissionStore rolePermissionStore,
+    ILoginStore loginStore,
     IJwtProvider jwtProvider,
     IConfiguration configuration) : ITokenService
 {
@@ -59,16 +58,15 @@ public class TokenService(
         User? user = await userStore.GetByIdAsync(userId);
         
         if (user is null || !user.IsActive)
-            return AuthErrors.UserNotFound;       
+            return AuthErrors.UserNotFound;
 
-        /*Role And Permission Claims*/
-        List<Guid> roleIds = await userRoleStore.GetActiveRoleIdsByUserIdAsync(user.UsersId);
-        if (roleIds.Count == 0)
+
+        var rolesAndPermissions = await loginStore.GetUserRolesAndPermissionsAsync(user.UsersId);
+        if (rolesAndPermissions.Roles.Count == 0)
             return AuthErrors.Unauthorized;
 
-        var permissionsCodes = await rolePermissionStore.GetActivePermissionCodesByRoleIdsAsync(roleIds);
-
-        var roleNames = await userRoleStore.GetActiveRoleNamesByUserIdAsync(user.UsersId);
+        var permissionsCodes = rolesAndPermissions.Permissions.Values.ToList();
+        var roleNames = rolesAndPermissions.Roles.Values.ToList();    
 
         var newAccessToken = jwtProvider.CreateAccessToken(
             user.UsersId,
@@ -77,5 +75,22 @@ public class TokenService(
             permissionsCodes);
 
         return Result<string>.Success(newAccessToken);
-    }     
+    }
+    public async Task<Result<string>> GenerateNewAccessTokenAsync(Guid userId, string email) 
+    {
+        var rolesAndPermissions = await loginStore.GetUserRolesAndPermissionsAsync(userId);
+        if (rolesAndPermissions.Roles.Count == 0)
+            return AuthErrors.Unauthorized;
+
+        var permissionsCodes = rolesAndPermissions.Permissions.Values.ToList();
+        var roleNames = rolesAndPermissions.Roles.Values.ToList();
+
+        var newAccessToken = jwtProvider.CreateAccessToken(
+            userId,
+            email,
+            roleNames,
+            permissionsCodes);
+
+        return Result<string>.Success(newAccessToken);
+    }
 }

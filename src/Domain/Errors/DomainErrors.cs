@@ -13,8 +13,6 @@ public record AuthErrors
     public static readonly Error MissingRefreshToken = new("Auth.MissingRefreshToken", "Refresh token is missing.");
     public static readonly Error InvalidRefreshToken = new("Auth.InvalidRefreshToken", "Invalid or expired refresh token.");
     public static readonly Error FailedToGenerateAccessToken = new("Auth.FailedToGenerateAccessToken", "Failed to generate a new access token.");
-    public static readonly Error TokenValidationFailed = new("Auth.TokenValidationFailed", "Access token validation failed.");
-
     // Logout Errors
     public static readonly Error LogoutFailed = new("Auth.LogoutFailed", "Logout failed. User may not be logged in or refresh token is invalid.");
 

@@ -4,19 +4,16 @@ using Infrastructure.DataAccess;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace Infrastructure.DataAccess.Migrations
+namespace Infrastructure.Migrations
 {
     [DbContext(typeof(TokenForgeContext))]
-    [Migration("20260403184655_SeedGranularPermissionsAndPolicies")]
-    partial class SeedGranularPermissionsAndPolicies
+    partial class TokenForgeContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -52,7 +49,7 @@ namespace Infrastructure.DataAccess.Migrations
 
                     b.HasIndex("UserAttempt");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserId", "LastAttemptAt");
 
                     b.ToTable("LoginAttempts");
                 });
@@ -111,15 +108,6 @@ namespace Infrastructure.DataAccess.Migrations
                             PermissionCode = "auth.logout",
                             PermissionDescription = "Close the current authenticated session.",
                             PermissionName = "Logout"
-                        },
-                        new
-                        {
-                            PermissionId = new Guid("7cc9d620-07c7-40d2-a5a7-95e0d1c0b10b"),
-                            CreatedAt = new DateTime(2026, 3, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            PermissionCode = "tokens.validate",
-                            PermissionDescription = "Validate an access token.",
-                            PermissionName = "Validate Token"
                         },
                         new
                         {
@@ -518,14 +506,6 @@ namespace Infrastructure.DataAccess.Migrations
                         },
                         new
                         {
-                            RolePermissionId = new Guid("4fa8aab1-4ee8-4e54-b1f0-8af8f022c012"),
-                            AssignedAt = new DateTime(2026, 3, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            PermissionId = new Guid("7cc9d620-07c7-40d2-a5a7-95e0d1c0b10b"),
-                            RoleId = new Guid("4d2d7af9-2c7f-4f42-8a3d-7e7e26a6a001")
-                        },
-                        new
-                        {
                             RolePermissionId = new Guid("4fa8aab1-4ee8-4e54-b1f0-8af8f022c013"),
                             AssignedAt = new DateTime(2026, 3, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -758,14 +738,6 @@ namespace Infrastructure.DataAccess.Migrations
                         },
                         new
                         {
-                            RolePermissionId = new Guid("4fa8aab1-4ee8-4e54-b1f0-8af8f022c028"),
-                            AssignedAt = new DateTime(2026, 3, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            PermissionId = new Guid("7cc9d620-07c7-40d2-a5a7-95e0d1c0b10b"),
-                            RoleId = new Guid("4d2d7af9-2c7f-4f42-8a3d-7e7e26a6a002")
-                        },
-                        new
-                        {
                             RolePermissionId = new Guid("4fa8aab1-4ee8-4e54-b1f0-8af8f022c029"),
                             AssignedAt = new DateTime(2026, 3, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -926,14 +898,6 @@ namespace Infrastructure.DataAccess.Migrations
                         },
                         new
                         {
-                            RolePermissionId = new Guid("4fa8aab1-4ee8-4e54-b1f0-8af8f022c036"),
-                            AssignedAt = new DateTime(2026, 3, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            PermissionId = new Guid("7cc9d620-07c7-40d2-a5a7-95e0d1c0b10b"),
-                            RoleId = new Guid("4d2d7af9-2c7f-4f42-8a3d-7e7e26a6a003")
-                        },
-                        new
-                        {
                             RolePermissionId = new Guid("4fa8aab1-4ee8-4e54-b1f0-8af8f022c037"),
                             AssignedAt = new DateTime(2026, 3, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
@@ -974,6 +938,9 @@ namespace Infrastructure.DataAccess.Migrations
                     b.HasKey("UsersId");
 
                     b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("UserAccount")
                         .IsUnique();
 
                     b.ToTable("Users");
